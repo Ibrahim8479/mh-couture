@@ -132,7 +132,7 @@ nav a.active {
 /* Hero Section */
 .hero-section {
     background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), 
-                url('../images/colection.jpeg') center/cover;
+                url('../images/galerie.jpeg') center/cover;
     min-height: 300px;
     display: flex;
     flex-direction: column;
