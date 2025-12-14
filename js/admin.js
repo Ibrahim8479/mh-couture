@@ -61,7 +61,10 @@ function showSection(section) {
     
     // Charger les données si nécessaire
     if (section === 'products') {
-        loadProducts();
+        setTimeout(() => {
+            loadProducts();
+            setupProductFilters();
+        }, 100);
     }
 }
 
@@ -229,10 +232,15 @@ function handleProductSubmit(e) {
     e.preventDefault();
     
     const productId = document.getElementById('productId').value;
+    const token = getAuthToken();
+    
+    console.log('Token:', token);
+    console.log('Product ID:', productId);
+    
     const formData = new FormData();
     
     formData.append('action', productId ? 'update' : 'create');
-    formData.append('token', getAuthToken());
+    formData.append('token', token);
     
     if (productId) {
         formData.append('id', productId);
@@ -370,4 +378,45 @@ function showError(message) {
     document.body.appendChild(notification);
     
     setTimeout(() => notification.remove(), 3000);
+}
+
+// CONFIGURATION DES FILTRES DE PRODUITS
+function setupProductFilters() {
+    const categoryFilter = document.getElementById('categoryFilter');
+    const searchInput = document.getElementById('productSearch');
+    
+    if (!categoryFilter || !searchInput) {
+        console.log('Filtres non trouvés');
+        return;
+    }
+    
+    // Filtre par catégorie
+    categoryFilter.addEventListener('change', function() {
+        filterProducts();
+    });
+    
+    // Recherche
+    searchInput.addEventListener('input', function() {
+        filterProducts();
+    });
+}
+
+// FILTRER LES PRODUITS
+function filterProducts() {
+    const categoryFilter = document.getElementById('categoryFilter').value;
+    const searchInput = document.getElementById('productSearch').value.toLowerCase();
+    
+    let filtered = allProducts;
+    
+    // Filtrer par catégorie
+    if (categoryFilter !== 'all') {
+        filtered = filtered.filter(p => p.category.toLowerCase() === categoryFilter.toLowerCase());
+    }
+    
+    // Filtrer par recherche
+    if (searchInput) {
+        filtered = filtered.filter(p => p.name.toLowerCase().includes(searchInput));
+    }
+    
+    displayProducts(filtered);
 }
