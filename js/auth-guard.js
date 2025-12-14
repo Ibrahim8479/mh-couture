@@ -126,7 +126,7 @@ function getAuthToken() {
     return localStorage.getItem('authToken');
 }
 
-// Helper pour lire les cookies
+// Helper pour lire les cookie
 function getCookieHelper(name) {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
