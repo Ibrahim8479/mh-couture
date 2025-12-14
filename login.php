@@ -83,9 +83,9 @@ $logged_out = isset($_GET['logged_out']) ? 'Vous avez été déconnecté avec su
                     <button type="submit" class="btn-submit">Se Connecter</button>
                 </form>
 
-                <!-- ✅ CORRECTION : Lien OUTSIDE du formulaire -->
+                <!-- ✅ CORRECTION : Lien avec onclick pour forcer la navigation -->
                 <p class="signup-link">
-                    Vous n'avez pas de compte? <a href="signup.php">Inscrivez-vous ici</a>
+                    Vous n'avez pas de compte? <a href="javascript:void(0);" onclick="window.location.href='signup.php';">Inscrivez-vous ici</a>
                 </p>
             </div>
         </div>
