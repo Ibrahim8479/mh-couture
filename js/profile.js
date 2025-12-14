@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Verifier si l'utilisateur est connecte
 function checkAuth() {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token = window.authToken || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     
     if (!token) {
         alert('Vous devez etre connecte pour acceder a cette page');
@@ -141,6 +141,7 @@ function updateProfile() {
     const lastName = document.getElementById('lastName').value.trim();
     const email = document.getElementById('email').value.trim();
     const phone = document.getElementById('phone').value.trim();
+    const token = window.authToken;
     
     if (!firstName || !lastName || !email) {
         showNotification('Veuillez remplir tous les champs', 'error');
@@ -154,7 +155,8 @@ function updateProfile() {
         return;
     }
     
-    // Sauvegarder localement
+    // TODO: Faire appel API pour mettre à jour au serveur
+    // Pour maintenant, sauvegarder localement
     const fullName = firstName + ' ' + lastName;
     localStorage.setItem('userName', fullName);
     localStorage.setItem('userEmail', email);
@@ -176,7 +178,7 @@ function loadOrders() {
     const ordersList = document.getElementById('ordersList');
     ordersList.innerHTML = '<div class="loading">Chargement des commandes...</div>';
     
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token = window.authToken;
     
     fetch('php/api/orders.php?action=getUserOrders&token=' + token)
         .then(response => response.json())
@@ -205,7 +207,7 @@ function displayOrders(orders) {
             </div>
             <div class="order-details">
                 <span>Date: ${formatDate(order.created_at)}</span>
-                <span>Montant: ${order.total_amount} FCFA</span>
+                <span>Montant: ${parseInt(order.total_amount).toLocaleString('fr-FR')} FCFA</span>
             </div>
         </div>
     `).join('');
@@ -213,7 +215,7 @@ function displayOrders(orders) {
 
 // Charger les mesures
 function loadMeasurements() {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token = window.authToken;
     
     fetch('php/api/measurements.php?action=getMeasurements&token=' + token)
         .then(response => response.json())
@@ -233,7 +235,7 @@ function loadMeasurements() {
 
 // Sauvegarder les mesures
 function saveMeasurements() {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token = window.authToken;
     
     const measurements = {
         chest: document.getElementById('chest').value,
@@ -274,6 +276,7 @@ function changePassword() {
     const currentPassword = document.getElementById('currentPassword').value;
     const newPassword = document.getElementById('newPassword').value;
     const confirmPassword = document.getElementById('confirmPassword').value;
+    const token = window.authToken;
     
     if (newPassword.length < 8) {
         showNotification('Le nouveau mot de passe doit contenir au moins 8 caracteres', 'error');
@@ -285,9 +288,7 @@ function changePassword() {
         return;
     }
     
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-    
-    fetch('php/api/auth.php', {
+    fetch('php/auth/auth.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -314,46 +315,13 @@ function changePassword() {
     });
 }
 
-// Deconnexion
-function logout() {
-    if (!confirm('Voulez-vous vraiment vous deconnecter?')) {
-        return;
-    }
-    
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-    
-    fetch('php/auth/auth.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            action: 'logout',
-            token: token
-        })
-    })
-    .then(() => {
-        localStorage.removeItem('authToken');
-        sessionStorage.removeItem('authToken');
-        localStorage.removeItem('userName');
-        localStorage.removeItem('userEmail');
-        window.location.href = 'index.php';
-    })
-    .catch(error => {
-        console.error('Erreur:', error);
-        localStorage.removeItem('authToken');
-        sessionStorage.removeItem('authToken');
-        window.location.href = 'index.php';
-    });
-}
-
 // Fonctions utilitaires
 function getStatusText(status) {
     const statuses = {
         'pending': 'En attente',
         'processing': 'En cours',
-        'completed': 'Complete',
-        'cancelled': 'Annule'
+        'completed': 'Completé',
+        'cancelled': 'Annulé'
     };
     return statuses[status] || status;
 }
