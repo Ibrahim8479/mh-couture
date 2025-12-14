@@ -94,32 +94,5 @@ if (isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token'])) {
             </div>
         </section>
     </main>
-
-    <footer>
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-col">
-                    <h3>MH Couture</h3>
-                    <p>Votre destination pour la mode sur mesure et l'élégance intemporelle.</p>
-                </div>
-                <div class="footer-col">
-                    <h4>Liens rapides</h4>
-                    <ul>
-                        <li><a href="index.php">Accueil</a></li>
-                        <li><a href="login.php">Collections</a></li>
-                        <li><a href="login.php">Contact</a></li>
-                    </ul>
-                </div>
-                <div class="footer-col">
-                    <h4>Contact</h4>
-                    <p>📧 Email: info@mhcouture.com</p>
-                    <p>📱 Tél: +227 91717508</p>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 MH Couture. Tous droits réservés.</p>
-            </div>
-        </div>
-    </footer>
 </body>
 </html>
