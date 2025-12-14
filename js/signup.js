@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Vérifier si l'utilisateur est déjà connecté
     const token = getCookie('auth_token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     if (token) {
-        window.location.href = 'login.php';
+        window.location.href = 'collections.php';
         return;
     }
 
@@ -138,11 +138,11 @@ function setupSignupForm() {
                 localStorage.setItem('userEmail', data.user.email);
                 
                 // Afficher un message de succès
-                showSuccessMessage('Inscription réussie! Bienvenue chez MH Couture!');
+                showSuccessMessage('Inscription réussie!');
                 
                 // Rediriger après 2 secondes
                 setTimeout(() => {
-                    window.location.href = 'collections.php';
+                    window.location.href = 'login.php';
                 }, 2000);
                 
             } else {
