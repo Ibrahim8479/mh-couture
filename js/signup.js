@@ -142,7 +142,7 @@ function setupSignupForm() {
                 
                 // Rediriger après 2 secondes
                 setTimeout(() => {
-                    window.location.href = 'login.php';
+                    window.location.href = 'collections.php';
                 }, 2000);
                 
             } else {
