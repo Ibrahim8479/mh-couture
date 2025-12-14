@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     setupSignupForm();
     setupPasswordStrength();
-    setupSocialLogin();
 });
 
 // Fonction pour lire les cookies
@@ -140,9 +139,9 @@ function setupSignupForm() {
                 // Afficher un message de succès
                 showSuccessMessage('Inscription réussie!');
                 
-                // Rediriger après 2 secondes
+                // Rediriger vers login.php avec le paramètre signup=1
                 setTimeout(() => {
-                    window.location.href = 'collections.php';
+                    window.location.href = 'login.php?signup=1';
                 }, 2000);
                 
             } else {
@@ -212,26 +211,6 @@ function calculatePasswordStrength(password) {
     if (/[^A-Za-z0-9]/.test(password)) strength++;
     
     return strength;
-}
-
-// Configuration de la connexion sociale
-function setupSocialLogin() {
-    const googleBtn = document.querySelector('.btn-google');
-    const facebookBtn = document.querySelector('.btn-facebook');
-    
-    if (googleBtn) {
-        googleBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            alert('L\'inscription avec Google sera bientôt disponible');
-        });
-    }
-    
-    if (facebookBtn) {
-        facebookBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            alert('L\'inscription avec Facebook sera bientôt disponible');
-        });
-    }
 }
 
 // Validation de l'email
