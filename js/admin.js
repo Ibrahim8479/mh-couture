@@ -15,7 +15,7 @@ function checkAdminAuth() {
     
     if (!token) {
         alert('Accès non autorisé');
-        window.location.href = 'login.html';
+        window.location.href = 'login.php';
         return;
     }
     
@@ -34,14 +34,14 @@ function checkAdminAuth() {
     .then(data => {
         if (!data.success || !data.isAdmin) {
             alert('Vous n\'avez pas les droits d\'administrateur');
-            window.location.href = 'index.html';
+            window.location.href = 'index.php';
         } else {
             document.getElementById('adminName').textContent = data.user.name;
         }
     })
     .catch(error => {
         console.error('Erreur:', error);
-        window.location.href = 'login.html';
+        window.location.href = 'login.php';
     });
 }
 
