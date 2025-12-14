@@ -163,7 +163,12 @@ main {
     cursor: pointer;
     transition: all 0.3s;
     letter-spacing: 0.5px;
-    text-decoration: none;
+    text-decoration: none !important;
+}
+
+.btn-login::after,
+.btn-signup::after {
+    display: none !important;  /* Supprime l'animation underline */
 }
 
 
