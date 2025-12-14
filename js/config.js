@@ -16,15 +16,15 @@ const CONFIG = {
     
     // Chemins des pages
     PAGES: {
-        HOME: 'index.html',
-        LOGIN: 'login.html',
-        SIGNUP: 'signup.html',
-        COLLECTIONS: 'collections.html',
-        CUSTOM_DESIGNS: 'custom-designs.html',
-        PRICING: 'pricing.html',
-        GALLERY: 'gallery.html',
-        CONTACT: 'contact.html',
-        ADMIN: 'admin.html'
+        HOME: 'index.php',
+        LOGIN: 'login.php',
+        SIGNUP: 'signup.php',
+        COLLECTIONS: 'collections.php',
+        CUSTOM_DESIGNS: 'custom-designs.php',
+        PRICING: 'pricing.php',
+        GALLERY: 'gallery.php',
+        CONTACT: 'contact.php',
+        ADMIN: 'admin.php'
     },
     
     // Dossier des uploads

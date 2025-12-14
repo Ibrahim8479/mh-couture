@@ -200,7 +200,7 @@ function addToCart(productId) {
     
     if (!token) {
         alert('Veuillez vous connecter pour ajouter des produits au panier');
-        window.location.href = 'login.html';
+        window.location.href = 'login.php';
         return;
     }
     
@@ -254,11 +254,11 @@ function checkUserLogin() {
     
     if (token) {
         userIcon.innerHTML = '👤';
-        userIcon.href = 'profile.html';
+        userIcon.href = 'profile.php';
         userIcon.title = 'Mon profil';
         updateCartCount();
     } else {
-        userIcon.href = 'login.html';
+        userIcon.href = 'login.php';
         userIcon.title = 'Se connecter';
     }
 }

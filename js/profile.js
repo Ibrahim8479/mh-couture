@@ -14,7 +14,7 @@ function checkAuth() {
     
     if (!token) {
         alert('Vous devez etre connecte pour acceder a cette page');
-        window.location.href = 'login.html';
+        window.location.href = 'login.php';
         return;
     }
 }
@@ -337,13 +337,13 @@ function logout() {
         sessionStorage.removeItem('authToken');
         localStorage.removeItem('userName');
         localStorage.removeItem('userEmail');
-        window.location.href = 'index.html';
+        window.location.href = 'index.php';
     })
     .catch(error => {
         console.error('Erreur:', error);
         localStorage.removeItem('authToken');
         sessionStorage.removeItem('authToken');
-        window.location.href = 'index.html';
+        window.location.href = 'index.php';
     });
 }
 

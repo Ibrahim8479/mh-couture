@@ -25,7 +25,7 @@ function loadCart() {
                 cartList.innerHTML = `
                     <div class="empty-cart">
                         <p>🛒 Votre panier est vide</p>
-                        <a href="collections.html" class="btn-shop">Découvrir nos collections</a>
+                        <a href="collections.php" class="btn-shop">Découvrir nos collections</a>
                     </div>
                 `;
             }

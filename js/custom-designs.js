@@ -8,10 +8,10 @@ function checkUserLogin() {
     const userIcon = document.getElementById('userIcon');
     
     if (token) {
-        userIcon.href = 'profile.html';
+        userIcon.href = 'profile.php';
         userIcon.title = 'Mon profil';
     } else {
-        userIcon.href = 'login.html';
+        userIcon.href = 'login.php';
         userIcon.title = 'Se connecter';
     }
 }
