@@ -1,50 +1,16 @@
-// admin.js - Implémentation complète du dashboard admin - CORRIGÉE
+// admin.js - Version simplifiée et fonctionnelle
 // Fichier: js/admin.js
 
 let currentSection = 'dashboard';
 let allProducts = [];
-let allOrders = [];
-let allUsers = [];
-let editingProductId = null;
-
-document.addEventListener('DOMContentLoaded', function() {
-    initializeAdmin();
-});
 
 // INITIALISATION
-function initializeAdmin() {
-    checkAdminAuth();
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Admin page loaded');
     setupNavigation();
     loadDashboardData();
     setupProductModal();
-    setupProductForm();
-    setupEventListeners();
-}
-
-// VERIFIER L'AUTHENTIFICATION ADMIN
-function checkAdminAuth() {
-    const token = getAuthToken();
-    
-    if (!token) {
-        window.location.href = 'login.php';
-        return;
-    }
-}
-
-// OBTENIR LE TOKEN
-function getAuthToken() {
-    const cookieToken = getCookie('auth_token');
-    if (cookieToken) return cookieToken;
-    return localStorage.getItem('authToken');
-}
-
-// LIRE LES COOKIES
-function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return null;
-}
+});
 
 // CONFIGURATION DE LA NAVIGATION
 function setupNavigation() {
@@ -54,6 +20,7 @@ function setupNavigation() {
         link.addEventListener('click', function(e) {
             e.preventDefault();
             
+            // Retirer active de tous les liens
             navLinks.forEach(l => l.classList.remove('active'));
             this.classList.add('active');
             
@@ -65,15 +32,22 @@ function setupNavigation() {
 
 // AFFICHER UNE SECTION
 function showSection(section) {
+    console.log('Showing section:', section);
+    
+    // Cacher toutes les sections
     document.querySelectorAll('.content-section').forEach(s => {
         s.classList.remove('active');
     });
     
-    const sectionElement = document.getElementById(section + '-section');
+    // Afficher la section sélectionnée
+    const sectionId = section + '-section';
+    const sectionElement = document.getElementById(sectionId);
+    
     if (sectionElement) {
         sectionElement.classList.add('active');
     }
     
+    // Mettre à jour le titre
     const titles = {
         'dashboard': 'Tableau de bord',
         'products': 'Gestion des Produits',
@@ -85,13 +59,9 @@ function showSection(section) {
     document.getElementById('pageTitle').textContent = titles[section] || section;
     currentSection = section;
     
-    // Charger les données selon la section
+    // Charger les données si nécessaire
     if (section === 'products') {
         loadProducts();
-    } else if (section === 'orders') {
-        loadOrders();
-    } else if (section === 'users') {
-        loadUsers();
     }
 }
 
@@ -107,43 +77,9 @@ function loadDashboardData() {
                 document.getElementById('totalOrders').textContent = data.stats.orders || 0;
                 document.getElementById('totalUsers').textContent = data.stats.users || 0;
                 document.getElementById('totalRevenue').textContent = (data.stats.revenue || '0') + ' FCFA';
-                
-                loadRecentOrders();
-            } else {
-                console.log('Pas de données tableau de bord');
             }
         })
-        .catch(error => {
-            console.error('Erreur tableau de bord:', error);
-            // Afficher au moins 0 partout
-            document.getElementById('totalProducts').textContent = '0';
-            document.getElementById('totalOrders').textContent = '0';
-            document.getElementById('totalUsers').textContent = '0';
-            document.getElementById('totalRevenue').textContent = '0 FCFA';
-        });
-}
-
-// CHARGER LES COMMANDES RECENTES
-function loadRecentOrders() {
-    const token = getAuthToken();
-    
-    fetch('php/api/admin.php?action=getRecentOrders&limit=5&token=' + encodeURIComponent(token))
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.orders && data.orders.length > 0) {
-                const tbody = document.querySelector('#recentOrdersTable tbody');
-                tbody.innerHTML = data.orders.map(order => `
-                    <tr>
-                        <td>${order.order_number}</td>
-                        <td>${order.customer_name || 'Client'}</td>
-                        <td>${parseInt(order.total_amount).toLocaleString('fr-FR')} FCFA</td>
-                        <td><span class="status-badge status-${order.status}">${getStatusText(order.status)}</span></td>
-                        <td>${formatDate(order.created_at)}</td>
-                    </tr>
-                `).join('');
-            }
-        })
-        .catch(error => console.error('Erreur commandes récentes:', error));
+        .catch(error => console.error('Erreur tableau de bord:', error));
 }
 
 // CHARGER LES PRODUITS
@@ -152,31 +88,37 @@ function loadProducts() {
     
     fetch('php/api/products.php?action=getAll')
         .then(response => {
-            if (!response.ok) throw new Error('Erreur réseau');
+            console.log('Response:', response);
             return response.json();
         })
         .then(data => {
-            console.log('Données reçues:', data);
-            if (data.success) {
-                allProducts = data.products || [];
+            console.log('Données produits:', data);
+            
+            if (data.success && data.products) {
+                allProducts = data.products;
+                console.log('Produits reçus:', allProducts.length);
                 displayProducts(allProducts);
             } else {
-                console.error('Erreur API:', data.message);
-                showError('Erreur: ' + (data.message || 'Impossible de charger les produits'));
+                console.error('Erreur produits:', data.message);
+                document.querySelector('#productsTable tbody').innerHTML = 
+                    '<tr><td colspan="6" class="no-data">Erreur: ' + (data.message || 'Impossible de charger') + '</td></tr>';
             }
         })
         .catch(error => {
-            console.error('Erreur détaillée:', error);
-            showError('Erreur de connexion au serveur');
+            console.error('Erreur fetch produits:', error);
+            document.querySelector('#productsTable tbody').innerHTML = 
+                '<tr><td colspan="6" class="no-data">Erreur de connexion</td></tr>';
         });
 }
 
 // AFFICHER LES PRODUITS DANS LE TABLEAU
 function displayProducts(products) {
+    console.log('Affichage des produits:', products.length);
+    
     const tbody = document.querySelector('#productsTable tbody');
     
     if (!tbody) {
-        console.error('Tableau des produits non trouvé');
+        console.error('tbody non trouvé!');
         return;
     }
     
@@ -187,12 +129,7 @@ function displayProducts(products) {
     
     tbody.innerHTML = products.map(product => `
         <tr>
-            <td>
-                <img src="${product.image_url || 'https://via.placeholder.com/50'}" 
-                     alt="${product.name}" 
-                     class="product-img"
-                     onerror="this.src='https://via.placeholder.com/50'">
-            </td>
+            <td><img src="${product.image_url || 'https://via.placeholder.com/50'}" alt="${product.name}" class="product-img"></td>
             <td>${product.name}</td>
             <td>${getCategoryName(product.category)}</td>
             <td>${parseInt(product.price).toLocaleString('fr-FR')} FCFA</td>
@@ -205,154 +142,35 @@ function displayProducts(products) {
             </td>
         </tr>
     `).join('');
-}
-
-// CHARGER LES COMMANDES
-function loadOrders() {
-    const token = getAuthToken();
     
-    fetch('php/api/admin.php?action=getAllOrders&token=' + encodeURIComponent(token))
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                allOrders = data.orders || [];
-                displayOrders(allOrders);
-            }
-        })
-        .catch(error => console.error('Erreur:', error));
-}
-
-// AFFICHER LES COMMANDES
-function displayOrders(orders) {
-    const tbody = document.querySelector('#ordersTable tbody');
-    
-    if (!tbody) return;
-    
-    if (!orders || orders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="no-data">Aucune commande</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = orders.map(order => `
-        <tr>
-            <td>${order.order_number}</td>
-            <td>${order.customer_name || 'Client'}</td>
-            <td>${order.items_count || 0}</td>
-            <td>${parseInt(order.total_amount).toLocaleString('fr-FR')} FCFA</td>
-            <td><span class="status-badge status-${order.status}">${getStatusText(order.status)}</span></td>
-            <td>${formatDate(order.created_at)}</td>
-            <td>
-                <div class="action-btns">
-                    <button class="btn-view" onclick="viewOrder(${order.id})">Voir</button>
-                </div>
-            </td>
-        </tr>
-    `).join('');
-}
-
-// CHARGER LES UTILISATEURS
-function loadUsers() {
-    const token = getAuthToken();
-    
-    fetch('php/api/admin.php?action=getAllUsers&token=' + encodeURIComponent(token))
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                allUsers = data.users || [];
-                displayUsers(allUsers);
-            }
-        })
-        .catch(error => console.error('Erreur:', error));
-}
-
-// AFFICHER LES UTILISATEURS
-function displayUsers(users) {
-    const tbody = document.querySelector('#usersTable tbody');
-    
-    if (!tbody) return;
-    
-    if (!users || users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="no-data">Aucun utilisateur</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = users.map(user => `
-        <tr>
-            <td>${user.id}</td>
-            <td>${user.first_name} ${user.last_name}</td>
-            <td>${user.email}</td>
-            <td>${user.phone}</td>
-            <td>${formatDate(user.created_at)}</td>
-            <td>
-                <span class="status-badge ${user.is_admin ? 'status-completed' : 'status-pending'}">
-                    ${user.is_admin ? 'Admin' : 'Utilisateur'}
-                </span>
-            </td>
-            <td>
-                <div class="action-btns">
-                    <button class="btn-edit" onclick="toggleUserAdmin(${user.id}, ${!user.is_admin})">
-                        ${user.is_admin ? 'Retirer' : 'Faire'} Admin
-                    </button>
-                </div>
-            </td>
-        </tr>
-    `).join('');
-}
-
-// CONFIGURATION DU MODAL PRODUIT
-function setupProductModal() {
-    const modal = document.getElementById('productModal');
-    if (!modal) {
-        console.error('Modal non trouvé');
-        return;
-    }
-    
-    const closeBtn = modal.querySelector('.close-btn');
-    if (closeBtn) {
-        closeBtn.addEventListener('click', closeProductModal);
-    }
-    
-    window.addEventListener('click', function(event) {
-        if (event.target === modal) {
-            closeProductModal();
-        }
-    });
+    console.log('Tableau mis à jour');
 }
 
 // OUVRIR LE MODAL PRODUIT
 function openProductModal(productId = null) {
     const modal = document.getElementById('productModal');
-    if (!modal) return;
-    
     const form = document.getElementById('productForm');
+    
     if (form) form.reset();
     
     const preview = document.getElementById('imagePreview');
     if (preview) preview.innerHTML = '';
     
     if (productId) {
-        editingProductId = productId;
-        const modalTitle = document.getElementById('modalTitle');
-        if (modalTitle) modalTitle.textContent = 'Modifier le produit';
-        
+        document.getElementById('modalTitle').textContent = 'Modifier le produit';
         const product = allProducts.find(p => p.id === productId);
+        
         if (product) {
             document.getElementById('productId').value = product.id;
             document.getElementById('productName').value = product.name;
-            document.getElementById('productCategory').value = product.category.toLowerCase();
+            document.getElementById('productCategory').value = product.category;
             document.getElementById('productPrice').value = product.price;
             document.getElementById('productStock').value = product.stock;
             document.getElementById('productDescription').value = product.description || '';
             document.getElementById('isCustom').checked = product.is_custom == 1;
-            
-            if (product.image_url && preview) {
-                preview.innerHTML = `<img src="${product.image_url}" alt="${product.name}">`;
-            }
         }
     } else {
-        editingProductId = null;
-        const modalTitle = document.getElementById('modalTitle');
-        if (modalTitle) modalTitle.textContent = 'Ajouter un produit';
+        document.getElementById('modalTitle').textContent = 'Ajouter un produit';
     }
     
     modal.classList.add('active');
@@ -361,17 +179,29 @@ function openProductModal(productId = null) {
 // FERMER LE MODAL
 function closeProductModal() {
     const modal = document.getElementById('productModal');
-    if (modal) {
-        modal.classList.remove('active');
-    }
-    editingProductId = null;
+    modal.classList.remove('active');
 }
 
-// CONFIGURATION DU FORMULAIRE PRODUIT
-function setupProductForm() {
+// CONFIGURATION DU MODAL
+function setupProductModal() {
+    const modal = document.getElementById('productModal');
     const form = document.getElementById('productForm');
     const imageInput = document.getElementById('productImage');
     
+    // Fermer en cliquant sur X
+    const closeBtn = modal.querySelector('.close-btn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeProductModal);
+    }
+    
+    // Fermer en cliquant en dehors
+    window.addEventListener('click', function(event) {
+        if (event.target === modal) {
+            closeProductModal();
+        }
+    });
+    
+    // Preview image
     if (imageInput) {
         imageInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -380,7 +210,7 @@ function setupProductForm() {
                 reader.onload = function(e) {
                     const preview = document.getElementById('imagePreview');
                     if (preview) {
-                        preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                        preview.innerHTML = '<img src="' + e.target.result + '" alt="Preview">';
                     }
                 };
                 reader.readAsDataURL(file);
@@ -388,26 +218,24 @@ function setupProductForm() {
         });
     }
     
+    // Soumettre le formulaire
     if (form) {
         form.addEventListener('submit', handleProductSubmit);
     }
-}
-
-// GESTION DES EVENEMENTS
-function setupEventListeners() {
-    // Éventuels autres écouteurs d'événements
 }
 
 // SOUMETTRE LE FORMULAIRE PRODUIT
 function handleProductSubmit(e) {
     e.preventDefault();
     
+    const productId = document.getElementById('productId').value;
     const formData = new FormData();
-    formData.append('action', editingProductId ? 'update' : 'create');
+    
+    formData.append('action', productId ? 'update' : 'create');
     formData.append('token', getAuthToken());
     
-    if (editingProductId) {
-        formData.append('id', editingProductId);
+    if (productId) {
+        formData.append('id', productId);
     }
     
     formData.append('name', document.getElementById('productName').value);
@@ -429,7 +257,7 @@ function handleProductSubmit(e) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showSuccess(editingProductId ? 'Produit modifié avec succès!' : 'Produit ajouté avec succès!');
+            showSuccess(productId ? 'Produit modifié!' : 'Produit ajouté!');
             closeProductModal();
             loadProducts();
         } else {
@@ -444,6 +272,7 @@ function handleProductSubmit(e) {
 
 // MODIFIER UN PRODUIT
 function editProduct(id) {
+    console.log('Modification du produit:', id);
     openProductModal(id);
 }
 
@@ -467,7 +296,7 @@ function deleteProduct(id) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showSuccess('Produit supprimé avec succès!');
+            showSuccess('Produit supprimé!');
             loadProducts();
         } else {
             showError('Erreur: ' + data.message);
@@ -475,22 +304,8 @@ function deleteProduct(id) {
     })
     .catch(error => {
         console.error('Erreur:', error);
-        showError('Une erreur est survenue');
+        showError('Erreur');
     });
-}
-
-// VOIR LES DETAILS D'UNE COMMANDE
-function viewOrder(orderId) {
-    alert('Détails de la commande ' + orderId + ' (à implémenter)');
-}
-
-// BASCULER LE STATUT ADMIN D'UN UTILISATEUR
-function toggleUserAdmin(userId, makeAdmin) {
-    if (!confirm(`Êtes-vous sûr de ${makeAdmin ? 'rendre cet utilisateur admin' : 'retirer les droits admin'}?`)) {
-        return;
-    }
-    
-    alert('Fonctionnalité en cours de développement');
 }
 
 // UTILITAIRES
@@ -503,20 +318,17 @@ function getCategoryName(category) {
     return categories[category.toLowerCase()] || category;
 }
 
-function getStatusText(status) {
-    const statuses = {
-        'pending': 'En attente',
-        'processing': 'En cours',
-        'completed': 'Complété',
-        'cancelled': 'Annulé'
-    };
-    return statuses[status] || status;
+function getAuthToken() {
+    const cookieToken = getCookie('auth_token');
+    if (cookieToken) return cookieToken;
+    return localStorage.getItem('authToken');
 }
 
-function formatDate(dateString) {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR');
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
 }
 
 // NOTIFICATIONS
@@ -532,16 +344,12 @@ function showSuccess(message) {
         border-radius: 8px;
         box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         z-index: 10000;
-        animation: slideInRight 0.3s ease;
         font-weight: 600;
     `;
-    notification.innerHTML = `✅ ${message}`;
+    notification.innerHTML = '✅ ' + message;
     document.body.appendChild(notification);
     
-    setTimeout(() => {
-        notification.style.animation = 'slideOutRight 0.3s ease';
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
+    setTimeout(() => notification.remove(), 3000);
 }
 
 function showError(message) {
@@ -556,28 +364,10 @@ function showError(message) {
         border-radius: 8px;
         box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         z-index: 10000;
-        animation: slideInRight 0.3s ease;
         font-weight: 600;
     `;
-    notification.innerHTML = `❌ ${message}`;
+    notification.innerHTML = '❌ ' + message;
     document.body.appendChild(notification);
     
-    setTimeout(() => {
-        notification.style.animation = 'slideOutRight 0.3s ease';
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
+    setTimeout(() => notification.remove(), 3000);
 }
-
-// AJOUTER LES ANIMATIONS CSS
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideInRight {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    @keyframes slideOutRight {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100%); opacity: 0; }
-    }
-`;
-document.head.appendChild(style);
