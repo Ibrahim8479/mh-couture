@@ -6,7 +6,7 @@
 
 session_start();
 
-// Redirection si utilisateur connecté
+// Redirection si utilisateur connect
 if (isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token'])) {
     header('Location: collections.php');
     exit;
