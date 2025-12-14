@@ -35,6 +35,7 @@ function setCookie(name, value, days) {
 function setupLoginForm() {
     const form = document.getElementById('loginForm');
     
+    // ✅ CORRECTION : Empêcher seulement la soumission du formulaire, pas les clics sur les liens
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         
