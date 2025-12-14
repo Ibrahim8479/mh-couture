@@ -2,6 +2,7 @@
 /**
  * Page Administration - MH Couture
  * Fichier: admin.php
+ * CORRIGÉ pour Ibrahim@gmail.com
  */
 
 session_start();
@@ -14,16 +15,19 @@ if (!$token) {
     exit;
 }
 
-// Vérifier si admin (email == admin@mhcouture.com)
-$userEmail = $_SESSION['user_email'] ?? '';
-$isAdmin = ($userEmail === 'admin@mhcouture.com');
+// Vérifier si admin (utiliser le champ is_admin de la BD)
+require_once 'php/config/database.php';
+require_once 'php/includes/functions.php';
 
-if (!$isAdmin) {
+$user = getUserIdFromToken($token);
+
+if (!$user || $user['is_admin'] != 1) {
     header('Location: index.php');
     exit;
 }
 
-$adminName = $_SESSION['user_name'] ?? 'Admin';
+$adminName = $_SESSION['user_name'] ?? $user['first_name'] . ' ' . $user['last_name'] ?? 'Admin';
+$adminEmail = $_SESSION['user_email'] ?? $user['email'] ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -68,6 +72,7 @@ $adminName = $_SESSION['user_name'] ?? 'Admin';
                 <h1 id="pageTitle">Tableau de bord</h1>
                 <div class="admin-user">
                     <span id="adminName"><?= htmlspecialchars($adminName) ?></span>
+                    <span class="admin-email"><?= htmlspecialchars($adminEmail) ?></span>
                     <div class="avatar"><?= strtoupper($adminName[0] ?? 'A') ?></div>
                 </div>
             </header>
@@ -207,12 +212,13 @@ $adminName = $_SESSION['user_name'] ?? 'Admin';
                                 <th>Email</th>
                                 <th>Téléphone</th>
                                 <th>Date d'inscription</th>
+                                <th>Statut Admin</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="6" class="no-data">Aucun utilisateur</td>
+                                <td colspan="7" class="no-data">Aucun utilisateur</td>
                             </tr>
                         </tbody>
                     </table>
@@ -316,7 +322,7 @@ $adminName = $_SESSION['user_name'] ?? 'Admin';
     <!-- Scripts -->
     <script>
         window.authToken = '<?= htmlspecialchars($token) ?>';
-        window.isAdmin = <?= $isAdmin ? 'true' : 'false' ?>;
+        window.isAdmin = true;
     </script>
     <script src="js/admin.js"></script>
 </body>
