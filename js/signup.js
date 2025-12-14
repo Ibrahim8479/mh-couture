@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // VÃ©rifier si l'utilisateur est dÃ©jÃ  connectÃ©
     const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     if (token) {
-        window.location.href = 'collections.html';
+        window.location.href = 'collections.php';
         return;
     }
 
@@ -119,7 +119,7 @@ function setupSignupForm() {
                 
                 // Rediriger aprÃ¨s 2 secondes
                 setTimeout(() => {
-                    window.location.href = 'collections.html';
+                    window.location.href = 'collections.php';
                 }, 2000);
                 
             } else {
