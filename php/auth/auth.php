@@ -2,6 +2,7 @@
 /**
  * Gestion de l'authentification - MH Couture
  * Fichier: php/auth/auth.php
+ * CORRIGÉ - Support admin avec redirection
  */
 
 require_once __DIR__ . '/../config/database.php';
@@ -135,7 +136,7 @@ elseif ($action === 'login') {
         }
         
         $stmt = $conn->prepare("
-            SELECT id, first_name, last_name, email, password, token
+            SELECT id, first_name, last_name, email, password, token, is_admin
             FROM users
             WHERE email = ? AND is_active = 1
         ");
@@ -170,10 +171,24 @@ elseif ($action === 'login') {
         $stmt = $conn->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
         $stmt->execute([$user['id']]);
         
+        // Definir les cookies de session
+        $cookieExpiry = time() + ($remember ? 30 * 24 * 60 * 60 : 24 * 60 * 60);
+        setcookie('auth_token', $token, $cookieExpiry, '/', '', false, true);
+        setcookie('user_name', $user['first_name'] . ' ' . $user['last_name'], $cookieExpiry, '/', '', false, true);
+        setcookie('user_email', $user['email'], $cookieExpiry, '/', '', false, true);
+        
+        // Determiner la redirection
+        $redirectUrl = 'collections.php';
+        if ($user['is_admin'] == 1) {
+            $redirectUrl = 'admin.php';
+        }
+        
         sendJSONResponse([
             'success' => true,
             'message' => 'Connexion reussie',
             'token' => $token,
+            'isAdmin' => $user['is_admin'] == 1,
+            'redirectUrl' => $redirectUrl,
             'user' => [
                 'id' => $user['id'],
                 'name' => $user['first_name'] . ' ' . $user['last_name'],
@@ -212,11 +227,9 @@ elseif ($action === 'checkAdmin') {
         ], 401);
     }
     
-    $isUserAdmin = isAdmin($token);
-    
     sendJSONResponse([
         'success' => true,
-        'isAdmin' => $isUserAdmin,
+        'isAdmin' => $user['is_admin'] == 1,
         'user' => [
             'id' => $user['id'],
             'name' => $user['first_name'] . ' ' . $user['last_name'],
@@ -240,6 +253,11 @@ elseif ($action === 'logout') {
             logError("Erreur deconnexion: " . $e->getMessage());
         }
     }
+    
+    // Effacer les cookies
+    setcookie('auth_token', '', time() - 3600, '/');
+    setcookie('user_name', '', time() - 3600, '/');
+    setcookie('user_email', '', time() - 3600, '/');
     
     sendJSONResponse([
         'success' => true,

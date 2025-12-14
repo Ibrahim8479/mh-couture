@@ -136,6 +136,17 @@ function getCookieHelper(name) {
 
 // Fonction pour vérifier si l'utilisateur est admin
 function checkIfAdmin() {
-    const userEmail = localStorage.getItem('userEmail');
-    return userEmail === 'Ibrahim@gmail.com';
+    const isAdmin = localStorage.getItem('isAdmin');
+    return isAdmin === '1';
+}
+
+// Fonction pour rediriger les admins vers admin.php
+function redirectAdminIfNeeded() {
+    const currentPage = window.location.pathname.split('/').pop() || 'index.php';
+    
+    // Si c'est un admin et pas sur admin.php
+    if (checkIfAdmin() && currentPage !== 'admin.php') {
+        // Optionnel: rediriger automatiquement
+        // window.location.href = 'admin.php';
+    }
 }

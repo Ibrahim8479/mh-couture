@@ -1,233 +1,329 @@
 <?php
 /**
- * API Administration - MH Couture
- * Fichier: php/api/admin.php
+ * Page Administration - MH Couture
+ * Fichier: admin.php
+ * CORRIGÉ pour Ibrahim@gmail.com
  */
 
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../includes/functions.php';
+session_start();
 
-setJSONHeaders();
+// Vérifier l'authentification
+$token = $_SESSION['auth_token'] ?? $_COOKIE['auth_token'] ?? null;
 
-$action = $_GET['action'] ?? '';
-$token = $_GET['token'] ?? $_POST['token'] ?? '';
-
-// Verifier si admin
-if (!isAdmin($token)) {
-    sendJSONResponse([
-        'success' => false,
-        'message' => 'Acces non autorise'
-    ], 403);
+if (!$token) {
+    header('Location: login.php');
+    exit;
 }
 
-// STATISTIQUES DU TABLEAU DE BORD
-if ($action === 'getDashboardStats') {
-    try {
-        $conn = getDBConnection();
-        
-        // Compter produits
-        $stmt = $conn->query("SELECT COUNT(*) as count FROM products");
-        $products = $stmt->fetch()['count'];
-        
-        // Compter commandes
-        $stmt = $conn->query("SELECT COUNT(*) as count FROM orders");
-        $orders = $stmt->fetch()['count'];
-        
-        // Compter utilisateurs
-        $stmt = $conn->query("SELECT COUNT(*) as count FROM users");
-        $users = $stmt->fetch()['count'];
-        
-        // Total revenus
-        $stmt = $conn->query("SELECT SUM(total_amount) as total FROM orders WHERE status = 'completed'");
-        $revenue = $stmt->fetch()['total'] ?? 0;
-        
-        sendJSONResponse([
-            'success' => true,
-            'stats' => [
-                'products' => $products,
-                'orders' => $orders,
-                'users' => $users,
-                'revenue' => number_format($revenue, 0, ',', ' ')
-            ]
-        ]);
-        
-    } catch (Exception $e) {
-        logError("Erreur getDashboardStats: " . $e->getMessage());
-        sendJSONResponse([
-            'success' => false,
-            'message' => 'Erreur lors du chargement'
-        ], 500);
-    }
+// Vérifier si admin (utiliser le champ is_admin de la BD)
+require_once 'php/config/database.php';
+require_once 'php/includes/functions.php';
+
+$user = getUserIdFromToken($token);
+
+if (!$user || $user['is_admin'] != 1) {
+    header('Location: index.php');
+    exit;
 }
 
-// COMMANDES RECENTES
-elseif ($action === 'getRecentOrders') {
-    $limit = intval($_GET['limit'] ?? 10);
-    
-    try {
-        $conn = getDBConnection();
-        $stmt = $conn->prepare("
-            SELECT o.*, u.first_name, u.last_name,
-                   CONCAT(u.first_name, ' ', u.last_name) as customer_name
-            FROM orders o
-            LEFT JOIN users u ON o.user_id = u.id
-            ORDER BY o.created_at DESC
-            LIMIT ?
-        ");
-        $stmt->execute([$limit]);
-        $orders = $stmt->fetchAll();
-        
-        sendJSONResponse([
-            'success' => true,
-            'orders' => $orders
-        ]);
-        
-    } catch (Exception $e) {
-        logError("Erreur getRecentOrders: " . $e->getMessage());
-        sendJSONResponse([
-            'success' => false,
-            'message' => 'Erreur lors du chargement'
-        ], 500);
-    }
-}
-
-// TOUTES LES COMMANDES
-elseif ($action === 'getAllOrders') {
-    try {
-        $conn = getDBConnection();
-        $stmt = $conn->query("
-            SELECT o.*, u.first_name, u.last_name,
-                   CONCAT(u.first_name, ' ', u.last_name) as customer_name,
-                   COUNT(oi.id) as items_count
-            FROM orders o
-            LEFT JOIN users u ON o.user_id = u.id
-            LEFT JOIN order_items oi ON o.id = oi.order_id
-            GROUP BY o.id
-            ORDER BY o.created_at DESC
-        ");
-        $orders = $stmt->fetchAll();
-        
-        sendJSONResponse([
-            'success' => true,
-            'orders' => $orders
-        ]);
-        
-    } catch (Exception $e) {
-        logError("Erreur getAllOrders: " . $e->getMessage());
-        sendJSONResponse([
-            'success' => false,
-            'message' => 'Erreur'
-        ], 500);
-    }
-}
-
-// TOUS LES UTILISATEURS
-elseif ($action === 'getAllUsers') {
-    try {
-        $conn = getDBConnection();
-        $stmt = $conn->query("
-            SELECT id, first_name, last_name, email, phone, created_at, is_active
-            FROM users
-            ORDER BY created_at DESC
-        ");
-        $users = $stmt->fetchAll();
-        
-        sendJSONResponse([
-            'success' => true,
-            'users' => $users
-        ]);
-        
-    } catch (Exception $e) {
-        logError("Erreur getAllUsers: " . $e->getMessage());
-        sendJSONResponse([
-            'success' => false,
-            'message' => 'Erreur'
-        ], 500);
-    }
-}
-
-// DETAILS D'UNE COMMANDE
-elseif ($action === 'getOrderDetails') {
-    $order_id = intval($_GET['order_id'] ?? 0);
-    
-    try {
-        $conn = getDBConnection();
-        
-        // Info commande
-        $stmt = $conn->prepare("
-            SELECT o.*, u.first_name, u.last_name, u.email, u.phone
-            FROM orders o
-            LEFT JOIN users u ON o.user_id = u.id
-            WHERE o.id = ?
-        ");
-        $stmt->execute([$order_id]);
-        $order = $stmt->fetch();
-        
-        if (!$order) {
-            sendJSONResponse([
-                'success' => false,
-                'message' => 'Commande non trouvee'
-            ], 404);
-        }
-        
-        // Articles de la commande
-        $stmt = $conn->prepare("
-            SELECT oi.*, p.name as product_name, p.image_url
-            FROM order_items oi
-            LEFT JOIN products p ON oi.product_id = p.id
-            WHERE oi.order_id = ?
-        ");
-        $stmt->execute([$order_id]);
-        $items = $stmt->fetchAll();
-        
-        $order['items'] = $items;
-        
-        sendJSONResponse([
-            'success' => true,
-            'order' => $order
-        ]);
-        
-    } catch (Exception $e) {
-        logError("Erreur getOrderDetails: " . $e->getMessage());
-        sendJSONResponse([
-            'success' => false,
-            'message' => 'Erreur'
-        ], 500);
-    }
-}
-
-// METTRE A JOUR LE STATUT D'UNE COMMANDE
-elseif ($action === 'updateOrderStatus') {
-    $input = getJSONInput();
-    $order_id = intval($input['order_id'] ?? 0);
-    $status = sanitizeInput($input['status'] ?? '');
-    
-    try {
-        $conn = getDBConnection();
-        $stmt = $conn->prepare("
-            UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?
-        ");
-        $stmt->execute([$status, $order_id]);
-        
-        sendJSONResponse([
-            'success' => true,
-            'message' => 'Statut mis a jour'
-        ]);
-        
-    } catch (Exception $e) {
-        logError("Erreur updateOrderStatus: " . $e->getMessage());
-        sendJSONResponse([
-            'success' => false,
-            'message' => 'Erreur'
-        ], 500);
-    }
-}
-
-// Action inconnue
-else {
-    sendJSONResponse([
-        'success' => false,
-        'message' => 'Action non reconnue'
-    ], 400);
-}
+$adminName = $_SESSION['user_name'] ?? $user['first_name'] . ' ' . $user['last_name'] ?? 'Admin';
+$adminEmail = $_SESSION['user_email'] ?? $user['email'] ?? '';
 ?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administration - MH Couture</title>
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <div class="admin-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <h2>MH Couture</h2>
+                <p>Administration</p>
+            </div>
+            <nav class="admin-nav">
+                <a href="admin.php" class="nav-link active" data-section="dashboard">
+                    📊 Tableau de bord
+                </a>
+                <a href="admin.php?section=products" class="nav-link" data-section="products">
+                    📦 Produits
+                </a>
+                <a href="admin.php?section=orders" class="nav-link" data-section="orders">
+                    📋 Commandes
+                </a>
+                <a href="admin.php?section=users" class="nav-link" data-section="users">
+                    👥 Utilisateurs
+                </a>
+                <a href="admin.php?section=settings" class="nav-link" data-section="settings">
+                    ⚙️ Paramètres
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="index.php" class="btn-back">← Retour au site</a>
+                <a href="logout.php" class="btn-logout">Déconnexion</a>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="admin-header">
+                <h1 id="pageTitle">Tableau de bord</h1>
+                <div class="admin-user">
+                    <span id="adminName"><?= htmlspecialchars($adminName) ?></span>
+                    <span class="admin-email"><?= htmlspecialchars($adminEmail) ?></span>
+                    <div class="avatar"><?= strtoupper($adminName[0] ?? 'A') ?></div>
+                </div>
+            </header>
+
+            <!-- Dashboard Section -->
+            <section id="dashboard-section" class="content-section active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">📦</div>
+                        <div class="stat-info">
+                            <h3 id="totalProducts">0</h3>
+                            <p>Produits</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📋</div>
+                        <div class="stat-info">
+                            <h3 id="totalOrders">0</h3>
+                            <p>Commandes</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-info">
+                            <h3 id="totalUsers">0</h3>
+                            <p>Utilisateurs</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-info">
+                            <h3 id="totalRevenue">0 FCFA</h3>
+                            <p>Revenus</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recent-orders">
+                    <h2>Commandes récentes</h2>
+                    <div class="table-container">
+                        <table id="recentOrdersTable">
+                            <thead>
+                                <tr>
+                                    <th>N° Commande</th>
+                                    <th>Client</th>
+                                    <th>Montant</th>
+                                    <th>Statut</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="5" class="no-data">Aucune commande récente</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Products Section -->
+            <section id="products-section" class="content-section">
+                <div class="section-header">
+                    <h2>Gestion des Produits</h2>
+                    <button class="btn-primary" onclick="openProductModal()">+ Ajouter un produit</button>
+                </div>
+                
+                <div class="filters-bar">
+                    <input type="text" placeholder="Rechercher un produit..." id="productSearch">
+                    <select id="categoryFilter">
+                        <option value="all">Toutes les catégories</option>
+                        <option value="homme">Homme</option>
+                        <option value="femme">Femme</option>
+                        <option value="enfant">Enfant</option>
+                    </select>
+                </div>
+
+                <div class="table-container">
+                    <table id="productsTable">
+                        <thead>
+                            <tr>
+                                <th>Image</th>
+                                <th>Nom</th>
+                                <th>Catégorie</th>
+                                <th>Prix</th>
+                                <th>Stock</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="6" class="no-data">Chargement des produits...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Orders Section -->
+            <section id="orders-section" class="content-section">
+                <div class="section-header">
+                    <h2>Gestion des Commandes</h2>
+                </div>
+                <div class="table-container">
+                    <table id="ordersTable">
+                        <thead>
+                            <tr>
+                                <th>N° Commande</th>
+                                <th>Client</th>
+                                <th>Articles</th>
+                                <th>Montant</th>
+                                <th>Statut</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="7" class="no-data">Aucune commande</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Users Section -->
+            <section id="users-section" class="content-section">
+                <div class="section-header">
+                    <h2>Gestion des Utilisateurs</h2>
+                </div>
+                <div class="table-container">
+                    <table id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nom</th>
+                                <th>Email</th>
+                                <th>Téléphone</th>
+                                <th>Date d'inscription</th>
+                                <th>Statut Admin</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="7" class="no-data">Aucun utilisateur</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings-section" class="content-section">
+                <h2>Paramètres</h2>
+                <div class="settings-container">
+                    <div class="settings-card">
+                        <h3>Informations du site</h3>
+                        <form id="siteSettingsForm">
+                            <div class="form-group">
+                                <label>Nom du site</label>
+                                <input type="text" value="MH Couture">
+                            </div>
+                            <div class="form-group">
+                                <label>Email de contact</label>
+                                <input type="email" value="info@mhcouture.com">
+                            </div>
+                            <div class="form-group">
+                                <label>Téléphone</label>
+                                <input type="tel" value="+227 91717508">
+                            </div>
+                            <button type="submit" class="btn-primary">Enregistrer</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Product Modal -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Ajouter un produit</h2>
+                <button class="close-btn" onclick="closeProductModal()">✕</button>
+            </div>
+            <form id="productForm">
+                <input type="hidden" id="productId">
+                
+                <div class="form-group">
+                    <label for="productName">Nom du produit *</label>
+                    <input type="text" id="productName" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="productCategory">Catégorie *</label>
+                    <select id="productCategory" required>
+                        <option value="">Sélectionner...</option>
+                        <option value="homme">Homme</option>
+                        <option value="femme">Femme</option>
+                        <option value="enfant">Enfant</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="productPrice">Prix (FCFA) *</label>
+                        <input type="number" id="productPrice" step="0.01" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="productStock">Stock *</label>
+                        <input type="number" id="productStock" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="productDescription">Description</label>
+                    <textarea id="productDescription" rows="4"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="productImage">Image du produit</label>
+                    <input type="file" id="productImage" accept="image/*">
+                    <div id="imagePreview" class="image-preview"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="isCustom">
+                        <span>Produit sur mesure</span>
+                    </label>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeProductModal()">
+                        Annuler
+                    </button>
+                    <button type="submit" class="btn-primary">
+                        Enregistrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        window.authToken = '<?= htmlspecialchars($token) ?>';
+        window.isAdmin = true;
+    </script>
+    <script src="js/admin.js"></script>
+</body>
+</html>

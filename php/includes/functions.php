@@ -2,6 +2,7 @@
 /**
  * Fonctions communes - MH Couture
  * Fichier: php/includes/functions.php
+ * CORRIGÉ avec support admin
  */
 
 // Definir les headers JSON pour les API
@@ -78,7 +79,11 @@ function getUserIdFromToken($token) {
     if (!$conn) return null;
     
     try {
-        $stmt = $conn->prepare("SELECT id, email, first_name, last_name FROM users WHERE token = ? AND is_active = 1");
+        $stmt = $conn->prepare("
+            SELECT id, email, first_name, last_name, is_admin 
+            FROM users 
+            WHERE token = ? AND is_active = 1
+        ");
         $stmt->execute([$token]);
         $user = $stmt->fetch();
         
@@ -94,8 +99,8 @@ function isAdmin($token) {
     $user = getUserIdFromToken($token);
     if (!$user) return false;
     
-    // Verifier si l'email est celui de l'admin
-    return $user['email'] === 'Ibrahim@gmail.com';
+    // Vérifier le champ is_admin dans la base de données
+    return $user['is_admin'] == 1;
 }
 
 // Fonction pour gerer l'upload de fichiers
@@ -137,7 +142,7 @@ function uploadFile($file, $targetDir = '../../uploads/products/') {
     }
 }
 
-// Fonction pour envoyer un email (a configurer selon votre serveur)
+// Fonction pour envoyer un email
 function sendEmail($to, $subject, $message, $from = 'info@mhcouture.com') {
     $headers = "From: $from\r\n";
     $headers .= "Reply-To: $from\r\n";

@@ -1,4 +1,4 @@
-// login.js - Updated with Cookie Support for PHP Sessions
+// login.js - Updated with Admin Redirect
 // Fichier: js/login.js
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -81,21 +81,24 @@ function setupLoginForm() {
             const data = await response.json();
             
             if (data.success) {
-                // Sauvegarder le token dans un cookie
-                const cookieDays = remember ? 30 : 1; // 30 jours si "remember", sinon 1 jour
+                // Sauvegarder le token
+                const cookieDays = remember ? 30 : 1;
                 setCookie('auth_token', data.token, cookieDays);
                 
                 // Aussi sauvegarder dans localStorage pour compatibilité
                 localStorage.setItem('authToken', data.token);
                 localStorage.setItem('userName', data.user.name);
                 localStorage.setItem('userEmail', data.user.email);
+                localStorage.setItem('isAdmin', data.isAdmin ? '1' : '0');
                 
                 // Afficher un message de succès
                 showSuccessMessage('Connexion réussie! Redirection...');
                 
                 // Rediriger après 1 seconde
                 setTimeout(() => {
-                    window.location.href = 'collections.php';
+                    // Utiliser l'URL de redirection fournie par le serveur
+                    const redirectUrl = data.redirectUrl || 'collections.php';
+                    window.location.href = redirectUrl;
                 }, 1000);
                 
             } else {
