@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Charger le panier
 function loadCart() {
-    const token = getAuthToken();
+    const token = window.authToken || localStorage.getItem('authToken');
     const cartList = document.getElementById('cartItemsList');
     
     if (!token) {
@@ -15,7 +15,7 @@ function loadCart() {
         return;
     }
     
-    fetch('php/api/cart.php?action=getAll&token=' + token)
+    fetch('php/api/cart.php?action=getAll&token=' + encodeURIComponent(token))
         .then(response => response.json())
         .then(data => {
             if (data.success && data.items.length > 0) {
@@ -24,7 +24,7 @@ function loadCart() {
             } else {
                 cartList.innerHTML = `
                     <div class="empty-cart">
-                        <p>🛒 Votre panier est vide</p>
+                        <p>🛍 Votre panier est vide</p>
                         <a href="collections.php" class="btn-shop">Découvrir nos collections</a>
                     </div>
                 `;
@@ -32,7 +32,7 @@ function loadCart() {
         })
         .catch(error => {
             console.error('Erreur:', error);
-            cartList.innerHTML = '<div class="empty-cart">Votre panier est vide</div>';
+            cartList.innerHTML = '<div class="empty-cart">Erreur lors du chargement du panier</div>';
         });
 }
 
@@ -80,7 +80,7 @@ function updateSummary(total) {
 
 // Mettre à jour la quantité
 function updateQuantity(cartId, newQuantity) {
-    const token = getAuthToken();
+    const token = window.authToken || localStorage.getItem('authToken');
     newQuantity = parseInt(newQuantity);
     
     if (newQuantity < 1) {
@@ -111,6 +111,7 @@ function updateQuantity(cartId, newQuantity) {
     })
     .catch(error => {
         console.error('Erreur:', error);
+        showNotification('Erreur lors de la mise à jour', 'error');
     });
 }
 
@@ -120,7 +121,7 @@ function removeItem(cartId) {
         return;
     }
     
-    const token = getAuthToken();
+    const token = window.authToken || localStorage.getItem('authToken');
     
     fetch('php/api/cart.php', {
         method: 'POST',
@@ -145,16 +146,17 @@ function removeItem(cartId) {
     })
     .catch(error => {
         console.error('Erreur:', error);
+        showNotification('Erreur lors de la suppression', 'error');
     });
 }
 
 // Mettre à jour le compteur du panier
 function updateCartCount() {
-    const token = getAuthToken();
+    const token = window.authToken || localStorage.getItem('authToken');
     
     if (!token) return;
     
-    fetch('php/api/cart.php?action=count&token=' + token)
+    fetch('php/api/cart.php?action=count&token=' + encodeURIComponent(token))
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -166,7 +168,59 @@ function updateCartCount() {
 
 // Procéder au paiement
 function proceedToCheckout() {
-    alert('Fonctionnalité de paiement en cours de développement.\n\nVeuillez contacter notre équipe pour finaliser votre commande:\n📞 +227 XX XXX XXXX\n📧 info@mhcouture.com');
+    const token = window.authToken || localStorage.getItem('authToken');
+    
+    if (!token) {
+        alert('Vous devez être connecté');
+        window.location.href = 'login.php';
+        return;
+    }
+    
+    // Récupérer les articles du panier
+    fetch('php/api/cart.php?action=getAll&token=' + encodeURIComponent(token))
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success || data.items.length === 0) {
+                alert('Votre panier est vide');
+                return;
+            }
+            
+            // Créer la commande
+            const shippingAddress = prompt('Adresse de livraison:');
+            if (!shippingAddress) return;
+            
+            fetch('php/api/orders.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'createOrder',
+                    token: token,
+                    items: data.items,
+                    shippingAddress: shippingAddress
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Commande créée avec succès: ' + data.order_number, 'success');
+                    setTimeout(() => {
+                        window.location.href = 'profile.php';
+                    }, 2000);
+                } else {
+                    alert('Erreur: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                alert('Fonctionnalité de paiement en cours de développement.\n\nVeuillez contacter notre équipe pour finaliser votre commande:\n📞 +227 91717508\n📧 info@mhcouture.com');
+            });
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors du chargement du panier');
+        });
 }
 
 // Notification

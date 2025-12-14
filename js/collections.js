@@ -1,4 +1,4 @@
-// collections.js - CORRIGÉ avec bons chemins API
+// collections.js - CORRIGÉ avec bons chemins API et authentification PHP
 
 let allProducts = [];
 let currentCategory = 'all';
@@ -118,7 +118,7 @@ function displayProducts(products) {
                 <h3 class="product-name">${product.name}</h3>
                 <p class="product-description">${product.description || ''}</p>
                 <div class="product-footer">
-                    <span class="product-price">${product.price.toLocaleString('fr-FR')} FCFA</span>
+                    <span class="product-price">${parseInt(product.price).toLocaleString('fr-FR')} FCFA</span>
                     <button class="add-to-cart-btn" onclick="addToCart(${product.id})">
                         Ajouter au panier
                     </button>
@@ -196,7 +196,7 @@ function sortProducts(products, sortType) {
 
 // Ajouter au panier
 function addToCart(productId) {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token = window.authToken || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     
     if (!token) {
         alert('Veuillez vous connecter pour ajouter des produits au panier');
@@ -222,7 +222,7 @@ function addToCart(productId) {
             updateCartCount();
             showNotification('Produit ajouté au panier avec succès!');
         } else {
-            alert(data.message);
+            alert('Erreur: ' + data.message);
         }
     })
     .catch(error => {
@@ -233,11 +233,11 @@ function addToCart(productId) {
 
 // Mettre à jour le compteur du panier
 function updateCartCount() {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token = window.authToken || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     
     if (!token) return;
     
-    fetch('php/api/cart.php?action=count&token=' + token)
+    fetch('php/api/cart.php?action=count&token=' + encodeURIComponent(token))
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -249,7 +249,7 @@ function updateCartCount() {
 
 // Vérifier si l'utilisateur est connecté
 function checkUserLogin() {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token = window.authToken || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     const userIcon = document.getElementById('userIcon');
     
     if (token) {
@@ -279,7 +279,7 @@ function showNotification(message) {
         font-weight: 600;
         animation: slideInRight 0.3s ease;
     `;
-    notification.textContent = message;
+    notification.textContent = '✅ ' + message;
     
     const style = document.createElement('style');
     style.textContent = `
