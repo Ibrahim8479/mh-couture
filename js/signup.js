@@ -1,10 +1,10 @@
 // signup.js - Gestion de l'inscription - MH Couture
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Vérifier si l'utilisateur est déjà connecté
+    // VÃ©rifier si l'utilisateur est dÃ©jÃ  connectÃ©
     const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     if (token) {
-        window.location.href = 'collections.php';
+        window.location.href = 'collections.html';
         return;
     }
 
@@ -20,10 +20,10 @@ function setupSignupForm() {
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        // Réinitialiser les erreurs
+        // RÃ©initialiser les erreurs
         clearErrors();
         
-        // Récupérer les valeurs
+        // RÃ©cupÃ©rer les valeurs
         const formData = {
             firstName: document.getElementById('firstName').value.trim(),
             lastName: document.getElementById('lastName').value.trim(),
@@ -39,7 +39,7 @@ function setupSignupForm() {
         let hasError = false;
         
         if (!formData.firstName) {
-            showError('firstName', 'Le prénom est requis');
+            showError('firstName', 'Le prÃ©nom est requis');
             hasError = true;
         }
         
@@ -57,10 +57,10 @@ function setupSignupForm() {
         }
         
         if (!formData.phone) {
-            showError('phone', 'Le téléphone est requis');
+            showError('phone', 'Le tÃ©lÃ©phone est requis');
             hasError = true;
         } else if (!validatePhone(formData.phone)) {
-            showError('phone', 'Numéro de téléphone invalide');
+            showError('phone', 'NumÃ©ro de tÃ©lÃ©phone invalide');
             hasError = true;
         }
         
@@ -68,7 +68,7 @@ function setupSignupForm() {
             showError('password', 'Le mot de passe est requis');
             hasError = true;
         } else if (formData.password.length < 8) {
-            showError('password', 'Le mot de passe doit contenir au moins 8 caractères');
+            showError('password', 'Le mot de passe doit contenir au moins 8 caractÃ¨res');
             hasError = true;
         }
         
@@ -84,7 +84,7 @@ function setupSignupForm() {
         
         if (hasError) return;
         
-        // Désactiver le bouton
+        // DÃ©sactiver le bouton
         const submitBtn = form.querySelector('.btn-submit');
         submitBtn.disabled = true;
         submitBtn.textContent = 'Inscription en cours...';
@@ -114,12 +114,12 @@ function setupSignupForm() {
                 localStorage.setItem('userName', data.user.name);
                 localStorage.setItem('userEmail', data.user.email);
                 
-                // Afficher un message de succès
-                showSuccessMessage('Inscription réussie! Bienvenue chez MH Couture!');
+                // Afficher un message de succÃ¨s
+                showSuccessMessage('Inscription rÃ©ussie! Bienvenue chez MH Couture!');
                 
-                // Rediriger après 2 secondes
+                // Rediriger aprÃ¨s 2 secondes
                 setTimeout(() => {
-                    window.location.href = 'collections.php';
+                    window.location.href = 'collections.html';
                 }, 2000);
                 
             } else {
@@ -152,7 +152,7 @@ function setupPasswordStrength() {
         const password = this.value;
         const strength = calculatePasswordStrength(password);
         
-        // Mettre à jour la barre
+        // Mettre Ã  jour la barre
         strengthFill.className = 'strength-fill';
         strengthText.className = 'strength-text';
         
@@ -193,12 +193,12 @@ function calculatePasswordStrength(password) {
 function setupSocialLogin() {
     document.querySelector('.btn-google').addEventListener('click', function(e) {
         e.preventDefault();
-        alert('L\'inscription avec Google sera bientôt disponible');
+        alert('L\'inscription avec Google sera bientÃ´t disponible');
     });
     
     document.querySelector('.btn-facebook').addEventListener('click', function(e) {
         e.preventDefault();
-        alert('L\'inscription avec Facebook sera bientôt disponible');
+        alert('L\'inscription avec Facebook sera bientÃ´t disponible');
     });
 }
 
@@ -208,7 +208,7 @@ function validateEmail(email) {
     return regex.test(email);
 }
 
-// Validation du téléphone (format Niger)
+// Validation du tÃ©lÃ©phone (format Niger)
 function validatePhone(phone) {
     // Accepter +227 XX XX XX XX ou variations
     const cleaned = phone.replace(/\s/g, '');
@@ -243,7 +243,7 @@ function clearErrors() {
     });
 }
 
-// Afficher un message de succès
+// Afficher un message de succÃ¨s
 function showSuccessMessage(message) {
     const successDiv = document.createElement('div');
     successDiv.style.cssText = `
@@ -260,7 +260,7 @@ function showSuccessMessage(message) {
         font-weight: 600;
         font-size: 15px;
     `;
-    successDiv.innerHTML = `✅ ${message}`;
+    successDiv.innerHTML = `âœ… ${message}`;
     
     document.body.appendChild(successDiv);
     
