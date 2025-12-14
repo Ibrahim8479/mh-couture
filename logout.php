@@ -34,6 +34,6 @@ if (isset($_COOKIE['auth_token'])) {
 
 // Supprimer les cookies localStorage du navigateur via JavaScript
 // Rediriger vers login avec message
-header('Location: login.php?logged_out=1');
+header('Location: index.php?logged_out=1');
 exit;
 ?>
