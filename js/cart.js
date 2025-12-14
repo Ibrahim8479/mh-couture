@@ -166,7 +166,7 @@ function updateCartCount() {
 
 // Procéder au paiement
 function proceedToCheckout() {
-    alert('Fonctionnalité de paiement en cours de développement.\n\nVeuillez contacter notre équipe pour finaliser votre commande:\n📞 +227 91717508\n📧 info@mhcouture.com');
+    alert('Fonctionnalité de paiement en cours de développement.\n\nVeuillez contacter notre équipe pour finaliser votre commande:\n📞 +227 XX XXX XXXX\n📧 info@mhcouture.com');
 }
 
 // Notification

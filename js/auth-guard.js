@@ -137,5 +137,5 @@ function getCookieHelper(name) {
 // Fonction pour vérifier si l'utilisateur est admin
 function checkIfAdmin() {
     const userEmail = localStorage.getItem('userEmail');
-    return userEmail === 'Ibrahim@gmail.com';
+    return userEmail === 'admin@mhcouture.com';
 }

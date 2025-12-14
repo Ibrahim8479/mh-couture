@@ -14,9 +14,9 @@ if (!$token) {
     exit;
 }
 
-// Vérifier si admin (email == Ibrahim@gmail.com)
+// Vérifier si admin (email == admin@mhcouture.com)
 $userEmail = $_SESSION['user_email'] ?? '';
-$isAdmin = ($userEmail === 'Ibrahim@gmail.com');
+$isAdmin = ($userEmail === 'admin@mhcouture.com');
 
 if (!$isAdmin) {
     header('Location: index.php');

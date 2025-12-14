@@ -89,7 +89,7 @@ if (!$token) {
                 <div class="testimonials-grid">
                     <div class="testimonial-card">
                         <div class="stars">⭐⭐⭐⭐⭐</div>
-                        <p>"Un travail exceptionnel! Mon Tenu était parfaitement ajusté et la qualité est irréprochable."</p>
+                        <p>"Un travail exceptionnel! Mon costume était parfaitement ajusté et la qualité est irréprochable."</p>
                         <div class="author">
                             <strong>Kofi A.</strong>
                             <span>Costume sur mesure</span>
