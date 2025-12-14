@@ -1,41 +1,22 @@
-// signup.js - CORRIGÉ - Gestion de l'inscription - MH Couture
+// signup.js - Gestion de l'inscription - MH Couture
 
 document.addEventListener('DOMContentLoaded', function() {
     // Vérifier si l'utilisateur est déjà connecté
-    const token = getCookie('auth_token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     if (token) {
-        window.location.href = 'collections.php';
+        window.location.href = 'login.php';
         return;
     }
 
     setupSignupForm();
     setupPasswordStrength();
+    setupSocialLogin();
 });
-
-// Fonction pour lire les cookies
-function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return null;
-}
-
-// Fonction pour créer un cookie
-function setCookie(name, value, days) {
-    let expires = "";
-    if (days) {
-        const date = new Date();
-        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-        expires = "; expires=" + date.toUTCString();
-    }
-    document.cookie = name + "=" + (value || "") + expires + "; path=/";
-}
 
 // Configuration du formulaire d'inscription
 function setupSignupForm() {
     const form = document.getElementById('signupForm');
     
-    // ✅ CORRECTION : Empêcher seulement la soumission du formulaire, pas les clics sur les liens
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         
@@ -105,7 +86,6 @@ function setupSignupForm() {
         
         // Désactiver le bouton
         const submitBtn = form.querySelector('.btn-submit');
-        const originalText = submitBtn.textContent;
         submitBtn.disabled = true;
         submitBtn.textContent = 'Inscription en cours...';
         
@@ -129,20 +109,17 @@ function setupSignupForm() {
             const data = await response.json();
             
             if (data.success) {
-                // Sauvegarder le token dans le cookie (priorité)
-                setCookie('auth_token', data.token, 30); // 30 jours
-                
-                // Aussi sauvegarder dans localStorage pour compatibilité
+                // Sauvegarder le token
                 localStorage.setItem('authToken', data.token);
                 localStorage.setItem('userName', data.user.name);
                 localStorage.setItem('userEmail', data.user.email);
                 
                 // Afficher un message de succès
-                showSuccessMessage('Inscription réussie!');
+                showSuccessMessage('Inscription réussie! Bienvenue chez MH Couture!');
                 
-                // Rediriger vers login.php avec le paramètre signup=1
+                // Rediriger après 2 secondes
                 setTimeout(() => {
-                    window.location.href = 'login.php?signup=1';
+                    window.location.href = 'login.php';
                 }, 2000);
                 
             } else {
@@ -153,14 +130,14 @@ function setupSignupForm() {
                     showError('email', data.message);
                 }
                 submitBtn.disabled = false;
-                submitBtn.textContent = originalText;
+                submitBtn.textContent = 'S\'inscrire';
             }
             
         } catch (error) {
             console.error('Erreur:', error);
             showError('email', 'Erreur de connexion au serveur');
             submitBtn.disabled = false;
-            submitBtn.textContent = originalText;
+            submitBtn.textContent = 'S\'inscrire';
         }
     });
 }
@@ -170,8 +147,6 @@ function setupPasswordStrength() {
     const passwordInput = document.getElementById('password');
     const strengthFill = document.getElementById('strengthFill');
     const strengthText = document.getElementById('strengthText');
-    
-    if (!passwordInput || !strengthFill || !strengthText) return;
     
     passwordInput.addEventListener('input', function() {
         const password = this.value;
@@ -212,6 +187,19 @@ function calculatePasswordStrength(password) {
     if (/[^A-Za-z0-9]/.test(password)) strength++;
     
     return strength;
+}
+
+// Configuration de la connexion sociale
+function setupSocialLogin() {
+    document.querySelector('.btn-google').addEventListener('click', function(e) {
+        e.preventDefault();
+        alert('L\'inscription avec Google sera bientôt disponible');
+    });
+    
+    document.querySelector('.btn-facebook').addEventListener('click', function(e) {
+        e.preventDefault();
+        alert('L\'inscription avec Facebook sera bientôt disponible');
+    });
 }
 
 // Validation de l'email

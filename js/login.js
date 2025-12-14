@@ -1,4 +1,4 @@
-// login.js - CORRIGÉ - Gestion de la connexion avec support des cookies
+// login.js - Updated with Cookie Support for PHP Sessions
 // Fichier: js/login.js
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     setupLoginForm();
+    setupSocialLogin();
 });
 
 // Fonction pour lire les cookies
@@ -35,7 +36,6 @@ function setCookie(name, value, days) {
 function setupLoginForm() {
     const form = document.getElementById('loginForm');
     
-    // ✅ CORRECTION : Empêcher seulement la soumission du formulaire, pas les clics sur les liens
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         
@@ -93,7 +93,7 @@ function setupLoginForm() {
                 // Afficher un message de succès
                 showSuccessMessage('Connexion réussie! Redirection...');
                 
-                // Rediriger vers collections après connexion
+                // Rediriger après 1 seconde
                 setTimeout(() => {
                     window.location.href = 'collections.php';
                 }, 1000);
@@ -115,6 +115,21 @@ function setupLoginForm() {
             submitBtn.disabled = false;
             submitBtn.textContent = originalText;
         }
+    });
+}
+
+// Configuration de la connexion sociale
+function setupSocialLogin() {
+    // Bouton Google
+    document.querySelector('.btn-google')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        alert('La connexion avec Google sera bientôt disponible');
+    });
+    
+    // Bouton Facebook
+    document.querySelector('.btn-facebook')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        alert('La connexion avec Facebook sera bientôt disponible');
     });
 }
 

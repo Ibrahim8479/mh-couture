@@ -1,5 +1,5 @@
 /**
- * AUTH GUARD - Protection des pages - Corrigé pour PHP
+ * AUTH GUARD - Protection des pages - Updated for PHP
  * Fichier: js/auth-guard.js
  * 
  * À inclure dans TOUTES les pages qui nécessitent une connexion

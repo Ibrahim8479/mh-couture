@@ -95,10 +95,6 @@ if ($action === 'signup') {
             $token
         ]);
         
-        // ✅ CORRECTION : Sauvegarder le token en cookie et session
-        setcookie('auth_token', $token, time() + (30 * 24 * 60 * 60), '/');
-        $_SESSION['auth_token'] = $token;
-        
         sendJSONResponse([
             'success' => true,
             'message' => 'Inscription reussie',
@@ -174,11 +170,6 @@ elseif ($action === 'login') {
         $stmt = $conn->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
         $stmt->execute([$user['id']]);
         
-        // ✅ CORRECTION : Sauvegarder le token en cookie et session
-        $cookieExpiry = $remember ? time() + (30 * 24 * 60 * 60) : time() + (24 * 60 * 60);
-        setcookie('auth_token', $token, $cookieExpiry, '/');
-        $_SESSION['auth_token'] = $token;
-        
         sendJSONResponse([
             'success' => true,
             'message' => 'Connexion reussie',
@@ -249,11 +240,6 @@ elseif ($action === 'logout') {
             logError("Erreur deconnexion: " . $e->getMessage());
         }
     }
-    
-    // ✅ CORRECTION : Supprimer le cookie et la session
-    setcookie('auth_token', '', time() - 3600, '/');
-    $_SESSION['auth_token'] = null;
-    session_destroy();
     
     sendJSONResponse([
         'success' => true,
