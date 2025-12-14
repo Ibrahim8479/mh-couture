@@ -2,15 +2,23 @@
 /**
  * Page d'inscription - MH Couture
  * Fichier: signup.php
+ * VERSION CORRIGÉE - Encodage UTF-8 + Sécurité CSRF
  */
 
 session_start();
+session_regenerate_id(true); // Sécurité supplémentaire
 
 // Redirection si utilisateur connecté
 if (isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token'])) {
     header('Location: collections.php');
     exit;
 }
+
+// Générer token CSRF
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrf_token = $_SESSION['csrf_token'];
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -44,35 +52,38 @@ if (isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token'])) {
                 <p class="subtitle">Rejoignez notre communauté de style</p>
 
                 <form id="signupForm">
+                    <!-- Token CSRF sécurisé -->
+                    <input type="hidden" name="csrf_token" id="csrfToken" value="<?php echo htmlspecialchars($csrf_token); ?>">
+
                     <div class="form-row">
                         <div class="form-group">
                             <label for="firstName">Prénom</label>
-                            <input type="text" id="firstName" name="firstName" placeholder="Votre prénom" required>
+                            <input type="text" id="firstName" name="firstName" placeholder="Votre prénom" required maxlength="50">
                             <span class="error-message" id="firstNameError"></span>
                         </div>
 
                         <div class="form-group">
                             <label for="lastName">Nom</label>
-                            <input type="text" id="lastName" name="lastName" placeholder="Votre nom" required>
+                            <input type="text" id="lastName" name="lastName" placeholder="Votre nom" required maxlength="50">
                             <span class="error-message" id="lastNameError"></span>
                         </div>
                     </div>
 
                     <div class="form-group">
                         <label for="email">Email</label>
-                        <input type="email" id="email" name="email" placeholder="votre@email.com" required>
+                        <input type="email" id="email" name="email" placeholder="votre@email.com" required maxlength="100">
                         <span class="error-message" id="emailError"></span>
                     </div>
 
                     <div class="form-group">
                         <label for="phone">Téléphone</label>
-                        <input type="tel" id="phone" name="phone" placeholder="+227 XX XXX XXXX" required>
+                        <input type="tel" id="phone" name="phone" placeholder="+227 XX XXX XXXX" required maxlength="20">
                         <span class="error-message" id="phoneError"></span>
                     </div>
 
                     <div class="form-group">
                         <label for="password">Mot de passe</label>
-                        <input type="password" id="password" name="password" placeholder="••••••••" required>
+                        <input type="password" id="password" name="password" placeholder="••••••••" required maxlength="128">
                         <span class="error-message" id="passwordError"></span>
                         <div class="password-strength">
                             <div class="strength-bar">
@@ -84,7 +95,7 @@ if (isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token'])) {
 
                     <div class="form-group">
                         <label for="confirmPassword">Confirmer le mot de passe</label>
-                        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="••••••••" required>
+                        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="••••••••" required maxlength="128">
                         <span class="error-message" id="confirmPasswordError"></span>
                     </div>
 
@@ -126,12 +137,11 @@ if (isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token'])) {
                             S'inscrire avec Facebook
                         </button>
                     </div>
-                </form>
 
-                <!-- ✅ CORRECTION : Lien OUTSIDE du formulaire avec onclick -->
-                <p class="login-link">
-                    Vous avez déjà un compte? <a href="javascript:void(0);" onclick="window.location.href='login.php';">Connectez-vous ici</a>
-                </p>
+                    <p class="login-link">
+                        Vous avez déjà un compte? <a href="login.php">Connectez-vous ici</a>
+                    </p>
+                </form>
             </div>
         </div>
     </div>

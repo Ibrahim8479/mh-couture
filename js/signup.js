@@ -1,8 +1,9 @@
 // signup.js - Gestion de l'inscription - MH Couture
+// VERSION CORRIGÉE - Sécurité renforcée
 
 document.addEventListener('DOMContentLoaded', function() {
     // Vérifier si l'utilisateur est déjà connecté
-    const token = getCookie('auth_token') || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token = getCookie('auth_token');
     if (token) {
         window.location.href = 'collections.php';
         return;
@@ -17,11 +18,13 @@ document.addEventListener('DOMContentLoaded', function() {
 function getCookie(name) {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
+    if (parts.length === 2) {
+        return parts.pop().split(';').shift();
+    }
     return null;
 }
 
-// Fonction pour créer un cookie
+// Fonction pour créer un cookie (client-side, pour développement)
 function setCookie(name, value, days) {
     let expires = "";
     if (days) {
@@ -29,7 +32,7 @@ function setCookie(name, value, days) {
         date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
         expires = "; expires=" + date.toUTCString();
     }
-    document.cookie = name + "=" + (value || "") + expires + "; path=/";
+    document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Strict";
 }
 
 // Configuration du formulaire d'inscription
@@ -44,14 +47,15 @@ function setupSignupForm() {
         
         // Récupérer les valeurs
         const formData = {
-            firstName: document.getElementById('firstName').value.trim(),
-            lastName: document.getElementById('lastName').value.trim(),
-            email: document.getElementById('email').value.trim(),
-            phone: document.getElementById('phone').value.trim(),
+            firstName: sanitizeInput(document.getElementById('firstName').value),
+            lastName: sanitizeInput(document.getElementById('lastName').value),
+            email: sanitizeInput(document.getElementById('email').value),
+            phone: sanitizeInput(document.getElementById('phone').value),
             password: document.getElementById('password').value,
             confirmPassword: document.getElementById('confirmPassword').value,
             terms: document.getElementById('terms').checked,
-            newsletter: document.getElementById('newsletter').checked
+            newsletter: document.getElementById('newsletter').checked,
+            csrf_token: document.getElementById('csrfToken').value
         };
         
         // Validation
@@ -60,10 +64,16 @@ function setupSignupForm() {
         if (!formData.firstName) {
             showError('firstName', 'Le prénom est requis');
             hasError = true;
+        } else if (formData.firstName.length < 2) {
+            showError('firstName', 'Le prénom doit contenir au moins 2 caractères');
+            hasError = true;
         }
         
         if (!formData.lastName) {
             showError('lastName', 'Le nom est requis');
+            hasError = true;
+        } else if (formData.lastName.length < 2) {
+            showError('lastName', 'Le nom doit contenir au moins 2 caractères');
             hasError = true;
         }
         
@@ -79,7 +89,7 @@ function setupSignupForm() {
             showError('phone', 'Le téléphone est requis');
             hasError = true;
         } else if (!validatePhone(formData.phone)) {
-            showError('phone', 'Numéro de téléphone invalide');
+            showError('phone', 'Numéro de téléphone invalide (format: +227 XX XXX XXXX ou XXXXXXXX)');
             hasError = true;
         }
         
@@ -115,6 +125,7 @@ function setupSignupForm() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                credentials: 'include', // Important pour cookies
                 body: JSON.stringify({
                     action: 'signup',
                     firstName: formData.firstName,
@@ -122,23 +133,21 @@ function setupSignupForm() {
                     email: formData.email,
                     phone: formData.phone,
                     password: formData.password,
-                    newsletter: formData.newsletter
+                    newsletter: formData.newsletter,
+                    csrf_token: formData.csrf_token
                 })
             });
+            
+            if (!response.ok) {
+                throw new Error(`Erreur serveur: ${response.status}`);
+            }
             
             const data = await response.json();
             
             if (data.success) {
-                // Sauvegarder le token dans le cookie (priorité)
-                setCookie('auth_token', data.token, 30); // 30 jours
-                
-                // Aussi sauvegarder dans localStorage pour compatibilité
-                localStorage.setItem('authToken', data.token);
-                localStorage.setItem('userName', data.user.name);
-                localStorage.setItem('userEmail', data.user.email);
-                
-                // Afficher un message de succès
-                showSuccessMessage('Inscription réussie! Bienvenue chez MH Couture!');
+                // Le token est géré côté serveur (HttpOnly cookie)
+                // On affiche un message de succès
+                showSuccessMessage('Inscription réussie! Redirection...');
                 
                 // Rediriger après 2 secondes
                 setTimeout(() => {
@@ -150,7 +159,7 @@ function setupSignupForm() {
                 if (data.field) {
                     showError(data.field, data.message);
                 } else {
-                    showError('email', data.message);
+                    showError('email', data.message || 'Erreur lors de l\'inscription');
                 }
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalText;
@@ -158,11 +167,20 @@ function setupSignupForm() {
             
         } catch (error) {
             console.error('Erreur:', error);
-            showError('email', 'Erreur de connexion au serveur');
+            showError('email', 'Erreur de connexion au serveur: ' + error.message);
             submitBtn.disabled = false;
             submitBtn.textContent = originalText;
         }
     });
+}
+
+// Sanitiser l'input
+function sanitizeInput(input) {
+    if (typeof input !== 'string') return '';
+    
+    const div = document.createElement('div');
+    div.textContent = input;
+    return div.innerHTML.trim();
 }
 
 // Configuration de l'indicateur de force du mot de passe
@@ -188,14 +206,17 @@ function setupPasswordStrength() {
             strengthFill.classList.add('weak');
             strengthText.classList.add('weak');
             strengthText.textContent = 'Faible';
+            strengthFill.style.width = '33%';
         } else if (strength < 5) {
             strengthFill.classList.add('medium');
             strengthText.classList.add('medium');
             strengthText.textContent = 'Moyen';
+            strengthFill.style.width = '66%';
         } else {
             strengthFill.classList.add('strong');
             strengthText.classList.add('strong');
             strengthText.textContent = 'Fort';
+            strengthFill.style.width = '100%';
         }
     });
 }
@@ -222,14 +243,14 @@ function setupSocialLogin() {
     if (googleBtn) {
         googleBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            alert('L\'inscription avec Google sera bientôt disponible');
+            showNotification('L\'inscription avec Google sera bientôt disponible');
         });
     }
     
     if (facebookBtn) {
         facebookBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            alert('L\'inscription avec Facebook sera bientôt disponible');
+            showNotification('L\'inscription avec Facebook sera bientôt disponible');
         });
     }
 }
@@ -240,11 +261,18 @@ function validateEmail(email) {
     return regex.test(email);
 }
 
-// Validation du téléphone (format Niger)
+// Validation du téléphone (format Niger améliioré)
 function validatePhone(phone) {
-    // Accepter +227 XX XX XX XX ou variations
-    const cleaned = phone.replace(/\s/g, '');
-    return cleaned.length >= 8;
+    // Accepter +227 XX XX XX XX, 227XXXXXXXX, ou 8 chiffres
+    const cleaned = phone.replace(/[\s\-\.]/g, '');
+    
+    // Format: +227XXXXXXXX ou 227XXXXXXXX (10 chiffres)
+    if (/^(\+)?227\d{8}$/.test(cleaned)) return true;
+    
+    // Format: 8 chiffres simples
+    if (/^\d{8}$/.test(cleaned)) return true;
+    
+    return false;
 }
 
 // Afficher une erreur
@@ -292,13 +320,38 @@ function showSuccessMessage(message) {
         font-weight: 600;
         font-size: 15px;
     `;
-    successDiv.innerHTML = `✅ ${message}`;
+    successDiv.innerHTML = '✅ ' + sanitizeInput(message);
     
     document.body.appendChild(successDiv);
     
     setTimeout(() => {
         successDiv.style.animation = 'slideOutRight 0.3s ease';
         setTimeout(() => successDiv.remove(), 300);
+    }, 3000);
+}
+
+// Afficher une notification simple
+function showNotification(message) {
+    const notifDiv = document.createElement('div');
+    notifDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #3498db;
+        color: white;
+        padding: 15px 25px;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        z-index: 10000;
+        animation: slideInRight 0.3s ease;
+    `;
+    notifDiv.textContent = message;
+    
+    document.body.appendChild(notifDiv);
+    
+    setTimeout(() => {
+        notifDiv.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => notifDiv.remove(), 300);
     }, 3000);
 }
 
