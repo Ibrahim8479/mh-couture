@@ -1,5 +1,5 @@
 /**
- * AUTH GUARD - Protection des pages - Updated for PHP
+ * AUTH GUARD - Protection des pages - Corrigé pour PHP
  * Fichier: js/auth-guard.js
  * 
  * À inclure dans TOUTES les pages qui nécessitent une connexion
@@ -8,11 +8,11 @@
 (function() {
     'use strict';
     
-    // Pages publiques (SEULEMENT 3 pages accessibles sans connexion)
+    // ✅ CORRECTION : Pages publiques accessibles sans connexion
     const PUBLIC_PAGES = [
         'index.php',
         'login.php',
-        'signup.php'
+        'signup.php'  // ✅ signup.php est PUBLIC
     ];
     
     // TOUTES les autres pages nécessitent une connexion
@@ -79,7 +79,8 @@
             return;
         }
         
-        // Si c'est une page publique, autoriser l'accès
+        // ✅ CORRECTION : Si c'est une page publique, autoriser l'accès
+        // (y compris signup.php même si non connecté)
         if (isPublicPage(currentPage)) {
             return;
         }
