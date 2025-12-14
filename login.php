@@ -77,15 +77,16 @@ $logged_out = isset($_GET['logged_out']) ? 'Vous avez été déconnecté avec su
                             <input type="checkbox" name="remember">
                             <span>Se souvenir de moi</span>
                         </label>
-                        <a href="#" class="forgot-password">Mot de passe oublié?</a>
+                        <a href="forgot-password.php" class="forgot-password">Mot de passe oublié?</a>
                     </div>
 
                     <button type="submit" class="btn-submit">Se Connecter</button>
-
-                    <p class="signup-link">
-                        Vous n'avez pas de compte? <a href="signup.php">Inscrivez-vous ici</a>
-                    </p>
                 </form>
+
+                <!-- ✅ CORRECTION : Lien OUTSIDE du formulaire -->
+                <p class="signup-link">
+                    Vous n'avez pas de compte? <a href="signup.php">Inscrivez-vous ici</a>
+                </p>
             </div>
         </div>
     </div>

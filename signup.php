@@ -104,11 +104,12 @@ if (isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token'])) {
                     </div>
 
                     <button type="submit" class="btn-submit">S'inscrire</button>
-
-                    <p class="login-link">
-                        Vous avez déjà un compte? <a href="login.php">Connectez-vous ici</a>
-                    </p>
                 </form>
+
+                <!-- ✅ CORRECTION : Lien OUTSIDE du formulaire -->
+                <p class="login-link">
+                    Vous avez déjà un compte? <a href="login.php">Connectez-vous ici</a>
+                </p>
             </div>
         </div>
     </div>
