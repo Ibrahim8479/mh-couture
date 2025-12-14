@@ -6,7 +6,7 @@
 
 session_start();
 
-// Redirection si utilisateur connect
+// Redirection si utilisateur connecté
 if (isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token'])) {
     header('Location: collections.php');
     exit;
@@ -126,11 +126,12 @@ if (isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token'])) {
                             S'inscrire avec Facebook
                         </button>
                     </div>
-
-                    <p class="login-link">
-                        Vous avez déjà un compte? <a href="login.php">Connectez-vous ici</a>
-                    </p>
                 </form>
+
+                <!-- ✅ CORRECTION : Lien OUTSIDE du formulaire avec onclick -->
+                <p class="login-link">
+                    Vous avez déjà un compte? <a href="javascript:void(0);" onclick="window.location.href='login.php';">Connectez-vous ici</a>
+                </p>
             </div>
         </div>
     </div>
