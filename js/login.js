@@ -1,8 +1,9 @@
-// login.js - Gestion de la connexion - MH Couture
+// login.js - Updated with Cookie Support for PHP Sessions
+// Fichier: js/login.js
 
 document.addEventListener('DOMContentLoaded', function() {
     // Vérifier si l'utilisateur est déjà connecté
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token = getCookie('auth_token');
     if (token) {
         window.location.href = 'collections.php';
         return;
@@ -11,6 +12,25 @@ document.addEventListener('DOMContentLoaded', function() {
     setupLoginForm();
     setupSocialLogin();
 });
+
+// Fonction pour lire les cookies
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
+
+// Fonction pour créer un cookie
+function setCookie(name, value, days) {
+    let expires = "";
+    if (days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "") + expires + "; path=/";
+}
 
 // Configuration du formulaire de connexion
 function setupLoginForm() {
@@ -28,8 +48,8 @@ function setupLoginForm() {
         const remember = document.querySelector('input[name="remember"]').checked;
         
         // Validation basique
-        if (!email) {
-            showError('email', 'Email requis');
+        if (!email || !password) {
+            showError('email', 'Veuillez remplir tous les champs');
             return;
         }
         
@@ -38,13 +58,9 @@ function setupLoginForm() {
             return;
         }
         
-        if (!password) {
-            showError('password', 'Mot de passe requis');
-            return;
-        }
-        
         // Désactiver le bouton pendant la soumission
         const submitBtn = form.querySelector('.btn-submit');
+        const originalText = submitBtn.textContent;
         submitBtn.disabled = true;
         submitBtn.textContent = 'Connexion en cours...';
         
@@ -65,18 +81,12 @@ function setupLoginForm() {
             const data = await response.json();
             
             if (data.success) {
-                // Sauvegarder le token
-                const token = data.token;
+                // Sauvegarder le token dans un cookie
+                const cookieDays = remember ? 30 : 1; // 30 jours si "remember", sinon 1 jour
+                setCookie('auth_token', data.token, cookieDays);
                 
-                if (remember) {
-                    // Stockage persistant (30 jours)
-                    localStorage.setItem('authToken', token);
-                } else {
-                    // Session seulement
-                    sessionStorage.setItem('authToken', token);
-                }
-                
-                // Sauvegarder les infos utilisateur
+                // Aussi sauvegarder dans localStorage pour compatibilité
+                localStorage.setItem('authToken', data.token);
                 localStorage.setItem('userName', data.user.name);
                 localStorage.setItem('userEmail', data.user.email);
                 
@@ -96,14 +106,14 @@ function setupLoginForm() {
                     showError('email', data.message);
                 }
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Se Connecter';
+                submitBtn.textContent = originalText;
             }
             
         } catch (error) {
             console.error('Erreur:', error);
             showError('email', 'Erreur de connexion au serveur');
             submitBtn.disabled = false;
-            submitBtn.textContent = 'Se Connecter';
+            submitBtn.textContent = originalText;
         }
     });
 }
@@ -111,22 +121,16 @@ function setupLoginForm() {
 // Configuration de la connexion sociale
 function setupSocialLogin() {
     // Bouton Google
-    const googleBtn = document.querySelector('.btn-google');
-    if (googleBtn) {
-        googleBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            alert('La connexion avec Google sera bientôt disponible');
-        });
-    }
+    document.querySelector('.btn-google')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        alert('La connexion avec Google sera bientôt disponible');
+    });
     
     // Bouton Facebook
-    const facebookBtn = document.querySelector('.btn-facebook');
-    if (facebookBtn) {
-        facebookBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            alert('La connexion avec Facebook sera bientôt disponible');
-        });
-    }
+    document.querySelector('.btn-facebook')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        alert('La connexion avec Facebook sera bientôt disponible');
+    });
 }
 
 // Validation de l'email
@@ -156,7 +160,7 @@ function clearErrors() {
         el.style.display = 'none';
     });
     
-    document.querySelectorAll('input[type="email"], input[type="password"]').forEach(input => {
+    document.querySelectorAll('input').forEach(input => {
         input.style.borderColor = '#e0e0e0';
     });
 }
