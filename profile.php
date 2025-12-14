@@ -1,3 +1,19 @@
+<?php
+/**
+ * Page Profil utilisateur - MH Couture
+ * Fichier: profile.php
+ */
+
+session_start();
+
+// Vérifier l'authentification
+$token = $_SESSION['auth_token'] ?? $_COOKIE['auth_token'] ?? null;
+
+if (!$token) {
+    header('Location: login.php');
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -5,8 +21,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mon Profil - MH Couture</title>
     <link rel="stylesheet" href="css/profile.css">
-    <!-- PROTECTION: Redirection auto si connecte -->
-    <script src="js/auth-guard.js"></script>
 </head>
 <body>
     <header>
@@ -27,17 +41,18 @@
         </div>
         <nav>
             <ul>
-                <li><a href="index.html">ACCUEIL</a></li>
-                <li><a href="collections.html">COLLECTIONS</a></li>
-                <li><a href="custom-designs.html">CRÉATIONS SUR MESURE</a></li>
-                <li><a href="pricing.html">TARIFS</a></li>
-                <li><a href="gallery.html">GALERIE</a></li>
-                <li><a href="contact.html">CONTACT</a></li>
+                <li><a href="index.php">ACCUEIL</a></li>
+                <li><a href="collections.php">COLLECTIONS</a></li>
+                <li><a href="custom-designs.php">CRÉATIONS SUR MESURE</a></li>
+                <li><a href="pricing.php">TARIFS</a></li>
+                <li><a href="gallery.php">GALERIE</a></li>
+                <li><a href="contact.php">CONTACT</a></li>
             </ul>
         </nav>
         <div class="header-actions">
-            <a href="profile.html" class="user-icon active" id="userIcon" title="Mon profil">👤</a>
-            <a href="cart.html" class="cart-icon" title="Mon panier">🛒 <span class="cart-count">0</span></a>
+            <a href="profile.php" class="user-icon active" id="userIcon" title="Mon profil">👤</a>
+            <a href="cart.php" class="cart-icon" title="Mon panier">🛍 <span class="cart-count">0</span></a>
+            <a href="logout.php" class="btn-logout" style="padding: 8px 15px; background: #d97642; color: white; border-radius: 4px; text-decoration: none; font-size: 14px;">Déconnexion</a>
         </div>
     </header>
 
@@ -73,7 +88,9 @@
                             </a>
                         </nav>
                         
-                        <button class="btn-logout" onclick="logout()">Déconnexion</button>
+                        <a href="logout.php" class="btn-logout" style="width: 100%; text-align: center; padding: 10px; background: #e74c3c; color: white; border-radius: 4px; text-decoration: none; display: block; margin-top: 20px;">
+                            Déconnexion
+                        </a>
                     </div>
 
                     <div class="profile-content">
@@ -194,9 +211,9 @@
                 <div class="footer-col">
                     <h4>Liens Rapides</h4>
                     <ul>
-                        <li><a href="index.html">Accueil</a></li>
-                        <li><a href="collections.html">Collections</a></li>
-                        <li><a href="contact.html">Contact</a></li>
+                        <li><a href="index.php">Accueil</a></li>
+                        <li><a href="collections.php">Collections</a></li>
+                        <li><a href="contact.php">Contact</a></li>
                     </ul>
                 </div>
                 <div class="footer-col">
@@ -211,6 +228,10 @@
         </div>
     </footer>
 
+    <!-- Passer le token au JavaScript -->
+    <script>
+        window.authToken = '<?= htmlspecialchars($token) ?>';
+    </script>
     <script src="js/profile.js"></script>
 </body>
 </html>
