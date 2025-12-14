@@ -166,12 +166,6 @@ main {
     text-decoration: none !important;
 }
 
-.btn-login::after,
-.btn-signup::after {
-    display: none !important;  /* Supprime l'animation underline */
-}
-
-
 .btn-login {
     background: white;
     color: #333;

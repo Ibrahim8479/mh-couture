@@ -364,12 +364,12 @@ function logout() {
         sessionStorage.removeItem('authToken');
         localStorage.removeItem('userName');
         localStorage.removeItem('userEmail');
-        window.location.href = 'index.html';
+        window.location.href = 'index.php';
     })
     .catch(error => {
         console.error('Erreur:', error);
         localStorage.removeItem('authToken');
         sessionStorage.removeItem('authToken');
-        window.location.href = 'index.html';
+        window.location.href = 'index.php';
     });
 }

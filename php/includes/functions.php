@@ -95,7 +95,7 @@ function isAdmin($token) {
     if (!$user) return false;
     
     // Verifier si l'email est celui de l'admin
-    return $user['email'] === 'admin@mhcouture.com';
+    return $user['email'] === 'Ibrahim@gmail.com';
 }
 
 // Fonction pour gerer l'upload de fichiers
