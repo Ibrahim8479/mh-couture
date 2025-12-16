@@ -316,7 +316,7 @@ body {
     text-decoration: underline;
 }
 
-/* Responsive */
+/* Responsive*/
 @media (max-width: 580px) {
     .form-row {
         grid-template-columns: 1fr;

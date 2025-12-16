@@ -223,7 +223,7 @@ elseif ($action === 'updateOrderStatus') {
     }
 }
 
-// Action inconnue
+// Action inconnu
 else {
     sendJSONResponse([
         'success' => false,

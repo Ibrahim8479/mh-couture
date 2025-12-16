@@ -6,7 +6,7 @@
 
 session_start();
 
-// Vérifier l'authentification
+// Vérifier l'authentificatio
 $token = $_SESSION['auth_token'] ?? $_COOKIE['auth_token'] ?? null;
 
 if (!$token) {
