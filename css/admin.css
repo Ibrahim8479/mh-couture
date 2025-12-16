@@ -1,267 +1,164 @@
-/* ================================
-   RESET
-================================ */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+/* =========================================
+   MODAL AJOUT PRODUIT
+========================================= */
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
 }
 
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f5f5f5;
-    overflow-x: hidden;
+.modal.show {
+    display: flex;
 }
 
-/* ================================
-   CONTAINER (FIX)
-   ➜ On enlève le GRID ❗
-================================ */
-.admin-container {
-    min-height: 100vh;
+/* CONTENU */
+.modal-content {
+    background: #ffffff;
+    width: 100%;
+    max-width: 520px;
+    border-radius: 14px;
+    padding: 30px;
+    position: relative;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+    animation: fadeModal 0.25s ease;
 }
 
-/* ================================
-   SIDEBAR
-================================ */
-.sidebar {
-    background: #2c3e50;
-    color: white;
+@keyframes fadeModal {
+    from {
+        opacity: 0;
+        transform: translateY(-25px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* TITRE */
+.modal-content h2 {
+    font-size: 24px;
+    margin-bottom: 25px;
+    color: #2c3e50;
+}
+
+/* BOUTON FERMER */
+.modal-close {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    background: none;
+    border: none;
+    font-size: 26px;
+    cursor: pointer;
+    color: #aaa;
+}
+
+.modal-close:hover {
+    color: #e74c3c;
+}
+
+/* FORM */
+.form-group {
     display: flex;
     flex-direction: column;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 260px;
-    height: 100vh;
-    z-index: 100;
+    gap: 6px;
 }
 
-.sidebar .logo {
-    padding: 30px 20px;
-    border-bottom: 1px solid #34495e;
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
 }
 
-.sidebar .logo h2 {
-    font-size: 22px;
-    margin-bottom: 5px;
-}
-
-.sidebar .logo p {
-    font-size: 12px;
-    color: #95a5a6;
-}
-
-.admin-nav {
-    flex: 1;
-    padding: 20px 0;
-}
-
-.nav-link {
-    display: block;
-    padding: 15px 20px;
-    color: #ecf0f1;
-    text-decoration: none;
-    transition: all 0.3s;
-    border-left: 3px solid transparent;
-}
-
-.nav-link:hover,
-.nav-link.active {
-    background: #34495e;
-    border-left-color: #d97642;
-    color: #d97642;
-}
-
-.sidebar-footer {
-    padding: 20px;
-    border-top: 1px solid #34495e;
-}
-
-.btn-back,
-.btn-logout {
-    display: block;
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 6px;
-    border: none;
+label {
     font-size: 14px;
     font-weight: 600;
-    cursor: pointer;
-    text-align: center;
-    text-decoration: none;
-}
-
-.btn-back {
-    background: #34495e;
-    color: white;
-}
-
-.btn-logout {
-    background: #e74c3c;
-    color: white;
-}
-
-/* ================================
-   MAIN CONTENT (FIX MAJEUR)
-================================ */
-.main-content {
-    margin-left: 260px;              /* espace sidebar */
-    width: calc(100% - 260px);
-    padding: 30px;
-    min-height: 100vh;
-    overflow-x: hidden;
-}
-
-/* ================================
-   HEADER
-================================ */
-.admin-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid #e0e0e0;
-}
-
-.admin-header h1 {
-    font-size: 28px;
     color: #333;
 }
 
-.admin-user {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: #d97642;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-}
-
-/* ================================
-   CONTENT SECTIONS
-================================ */
-.content-section {
-    display: none;
-}
-
-.content-section.active {
-    display: block;
-}
-
-/* ================================
-   FILTERS
-================================ */
-.filters-bar {
-    display: flex;
-    gap: 15px;
-    margin-bottom: 20px;
-}
-
-.filters-bar input,
-.filters-bar select {
-    padding: 10px 15px;
+input[type="text"],
+input[type="number"],
+select,
+textarea {
+    padding: 11px 12px;
     border-radius: 8px;
     border: 2px solid #e0e0e0;
     font-size: 14px;
+    transition: 0.2s;
 }
 
-.filters-bar input {
-    flex: 1;
+textarea {
+    resize: vertical;
+    min-height: 90px;
 }
 
-/* ================================
-   TABLES
-================================ */
-.table-container {
-    background: white;
-    border-radius: 12px;
-    overflow-x: auto;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: #d97642;
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-thead {
-    background: #f8f9fa;
-}
-
-th, td {
-    padding: 15px;
-    text-align: left;
+/* FILE */
+input[type="file"] {
     font-size: 14px;
 }
 
-.product-img {
-    width: 50px;
-    height: 50px;
-    object-fit: cover;
-    border-radius: 8px;
-}
-
-/* ================================
-   ACTION BUTTONS
-================================ */
-.action-btns {
+/* CHECKBOX */
+.checkbox-group {
     display: flex;
-    gap: 8px;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
 }
 
-.btn-edit {
-    background: #3498db;
+/* ACTIONS */
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 25px;
+}
+
+.btn-cancel {
+    padding: 10px 18px;
+    background: #ecf0f1;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-cancel:hover {
+    background: #dcdde1;
+}
+
+.btn-save {
+    padding: 10px 18px;
+    background: #d97642;
     color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
 }
 
-.btn-delete {
-    background: #e74c3c;
-    color: white;
+.btn-save:hover {
+    background: #c86534;
 }
 
-/* ================================
-   NO DATA
-================================ */
-.no-data {
-    text-align: center;
-    padding: 40px;
-    color: #999;
-}
-
-/* ================================
-   RESPONSIVE
-================================ */
-@media (max-width: 1024px) {
-    .sidebar {
-        position: relative;
-        width: 100%;
-        height: auto;
+/* RESPONSIVE */
+@media (max-width: 600px) {
+    .modal-content {
+        margin: 20px;
+        padding: 20px;
     }
 
-    .main-content {
-        margin-left: 0;
-        width: 100%;
-    }
-}
-
-@media (max-width: 768px) {
-    .filters-bar {
-        flex-direction: column;
-    }
-
-    table {
-        font-size: 12px;
+    .form-row {
+        grid-template-columns: 1fr;
     }
 }
