@@ -252,68 +252,72 @@ $adminEmail = $_SESSION['user_email'] ?? $user['email'] ?? '';
         </main>
     </div>
 
-    <!-- MODAL AJOUT PRODUIT -->
-<div class="modal" id="addProductModal">
-
-    <div class="modal-content">
-
-        <!-- Bouton fermer -->
-        <button class="modal-close" onclick="closeAddProductModal()">×</button>
-
-        <h2>Ajouter un produit</h2>
-
-        <form method="POST" enctype="multipart/form-data">
-
-            <div class="form-group">
-                <label>Nom du produit *</label>
-                <input type="text" name="nom" required>
+    <!-- Product Modal -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Ajouter un produit</h2>
+                <button class="close-btn" onclick="closeProductModal()">✕</button>
             </div>
-
-            <div class="form-group">
-                <label>Catégorie *</label>
-                <select name="categorie" required>
-                    <option value="">Sélectionner...</option>
-                    <option value="Homme">Homme</option>
-                    <option value="Femme">Femme</option>
-                    <option value="Enfant">Enfant</option>
-                </select>
-            </div>
-
-            <div class="form-row">
+            <form id="productForm">
+                <input type="hidden" id="productId">
+                
                 <div class="form-group">
-                    <label>Prix (FCFA) *</label>
-                    <input type="number" name="prix" required>
+                    <label for="productName">Nom du produit *</label>
+                    <input type="text" id="productName" required>
                 </div>
 
                 <div class="form-group">
-                    <label>Stock *</label>
-                    <input type="number" name="stock" required>
+                    <label for="productCategory">Catégorie *</label>
+                    <select id="productCategory" required>
+                        <option value="">Sélectionner...</option>
+                        <option value="homme">Homme</option>
+                        <option value="femme">Femme</option>
+                        <option value="enfant">Enfant</option>
+                    </select>
                 </div>
-            </div>
 
-            <div class="form-group">
-                <label>Description</label>
-                <textarea name="description"></textarea>
-            </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="productPrice">Prix (FCFA) *</label>
+                        <input type="number" id="productPrice" step="0.01" required>
+                    </div>
 
-            <div class="form-group">
-                <label>Image du produit</label>
-                <input type="file" name="image">
-            </div>
+                    <div class="form-group">
+                        <label for="productStock">Stock *</label>
+                        <input type="number" id="productStock" required>
+                    </div>
+                </div>
 
-            <div class="checkbox-group">
-                <input type="checkbox" name="sur_mesure" id="sur_mesure">
-                <label for="sur_mesure">Produit sur mesure</label>
-            </div>
+                <div class="form-group">
+                    <label for="productDescription">Description</label>
+                    <textarea id="productDescription" rows="4"></textarea>
+                </div>
 
-            <div class="modal-actions">
-                <button type="button" class="btn-cancel" onclick="closeAddProductModal()">Annuler</button>
-                <button type="submit" class="btn-save">Enregistrer</button>
-            </div>
+                <div class="form-group">
+                    <label for="productImage">Image du produit</label>
+                    <input type="file" id="productImage" accept="image/*">
+                    <div id="imagePreview" class="image-preview"></div>
+                </div>
 
-        </form>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="isCustom">
+                        <span>Produit sur mesure</span>
+                    </label>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeProductModal()">
+                        Annuler
+                    </button>
+                    <button type="submit" class="btn-primary">
+                        Enregistrer
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
-</div>
 
     <!-- Scripts -->
     <script>

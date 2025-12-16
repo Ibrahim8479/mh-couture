@@ -311,14 +311,3 @@ function notify(text, bg) {
     document.body.appendChild(n);
     setTimeout(() => n.remove(), 3000);
 }
-
-
-function openAddProductModal() {
-    document.getElementById('addProductModal').classList.add('show');
-}
-
-function closeAddProductModal() {
-    document.getElementById('addProductModal').classList.remove('show');
-}
-
-
