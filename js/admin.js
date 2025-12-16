@@ -148,7 +148,7 @@ function displayProducts(products) {
 
 function showProductsError(message) {
     const tbody = document.querySelector('#productsTable tbody');
-    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="no-data">${message}</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="10" class="no-data">${message}</td></tr>`;
 }
 
 // ===============================
