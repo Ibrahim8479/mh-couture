@@ -211,6 +211,18 @@ function displayProducts(products) {
         </tr>
             `;
         }).join('');
+
+        // Highlight and scroll table into view for debugging visibility issues
+        const table = document.getElementById('productsTable');
+        if (table) {
+            try {
+                table.style.outline = '4px solid rgba(217,83,79,0.95)';
+                table.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => table.style.outline = '', 2500);
+            } catch (err) {
+                console.warn('scroll to products table failed', err);
+            }
+        }
     } catch (e) {
         console.error('Erreur affichage produits:', e, products);
         tbody.innerHTML = '<tr><td colspan="6" class="no-data">Erreur d\'affichage</td></tr>';
