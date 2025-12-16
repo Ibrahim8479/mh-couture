@@ -1,9 +1,10 @@
-<?php
 /**
- * API Gestion des Commandes Sur Mesure - MH Couture
- * Fichier: php/api/custom-orders.php
+ * ============================================
+ * FICHIER: php/api/custom-orders.php (COMPLET)
+ * ============================================
  */
-
+?>
+<?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/functions.php';
 
@@ -12,7 +13,7 @@ setJSONHeaders();
 $input = getJSONInput();
 $action = $input['action'] ?? '';
 
-// CREER UNE COMMANDE SUR MESURE
+// CRÉER UNE COMMANDE SUR MESURE
 if ($action === 'createCustomOrder') {
     $fullName = sanitizeInput($input['fullName'] ?? '');
     $email = sanitizeInput($input['email'] ?? '');
@@ -23,15 +24,15 @@ if ($action === 'createCustomOrder') {
     $budget = floatval($input['budget'] ?? 0);
     $description = sanitizeInput($input['description'] ?? '');
     $hasMeasurements = sanitizeInput($input['hasMeasurements'] ?? 'no');
-    $deadline = $input['deadline'] ?? null;
+    $deadline = sanitizeInput($input['deadline'] ?? '');
     $images = $input['images'] ?? [];
     
     // Validation
-    if (empty($fullName) || empty($email) || empty($phone) || 
-        empty($garmentType) || empty($category) || empty($description)) {
+    if (empty($fullName) || empty($email) || empty($phone) || empty($garmentType) || 
+        empty($category) || empty($description)) {
         sendJSONResponse([
             'success' => false,
-            'message' => 'Tous les champs obligatoires doivent etre remplis'
+            'message' => 'Tous les champs obligatoires doivent être remplis'
         ], 400);
     }
     
@@ -48,14 +49,13 @@ if ($action === 'createCustomOrder') {
             throw new Exception('Erreur de connexion');
         }
         
-        $orderNumber = generateOrderNumber();
+        $orderNumber = generateOrderNumber('CUSTOM');
+        $referenceImages = !empty($images) ? json_encode($images) : null;
         
-        // Inserer la commande
         $stmt = $conn->prepare("
             INSERT INTO custom_orders 
-            (order_number, full_name, email, phone, garment_type, category, 
-             occasion, budget, description, has_measurements, deadline, 
-             reference_images, status, created_at)
+            (order_number, full_name, email, phone, garment_type, category, occasion, 
+             budget, description, has_measurements, deadline, reference_images, status, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())
         ");
         
@@ -70,63 +70,77 @@ if ($action === 'createCustomOrder') {
             $budget,
             $description,
             $hasMeasurements,
-            $deadline,
-            json_encode($images)
+            $deadline ?: null,
+            $referenceImages
         ]);
         
-        $order_id = $conn->lastInsertId();
+        $orderId = $conn->lastInsertId();
         
         // Envoyer un email de confirmation
-        $emailSubject = "Confirmation de votre demande sur mesure - MH Couture";
+        $emailSubject = "Confirmation de demande sur mesure - MH Couture";
         $emailBody = "
 Bonjour $fullName,
 
-Nous avons bien recu votre demande de creation sur mesure.
+Nous avons bien reçu votre demande de création sur mesure.
 
-Numero de commande: $orderNumber
-Type de vetement: $garmentType
-Categorie: $category
-Budget estime: " . formatPrice($budget) . "
+Numéro de commande: $orderNumber
+Type de vêtement: $garmentType
+Catégorie: $category
 
-Notre equipe va analyser votre demande et vous contactera sous 24 heures pour discuter des details et planifier la prise de mesures.
+Nous vous contacterons dans les 24 heures pour discuter de votre projet.
 
 Cordialement,
-L'equipe MH Couture
-Niamey, Niger
+L'équipe MH Couture
         ";
         
         sendEmail($email, $emailSubject, $emailBody);
         
-        // Email a l'admin
-        sendEmail('info@mhcouture.com', 
-            "Nouvelle commande sur mesure: $orderNumber", 
-            "Nouvelle demande de $fullName\nType: $garmentType\nBudget: " . formatPrice($budget)
-        );
+        // Notifier l'admin
+        $adminEmailSubject = "Nouvelle commande sur mesure - $orderNumber";
+        $adminEmailBody = "
+Nouvelle demande de création sur mesure reçue:
+
+Client: $fullName
+Email: $email
+Téléphone: $phone
+Type: $garmentType
+Catégorie: $category
+Budget: " . ($budget > 0 ? formatPrice($budget) : 'Non spécifié') . "
+Occasion: $occasion
+Date souhaitée: " . ($deadline ?: 'Non spécifiée') . "
+
+Description:
+$description
+
+A des mesures: " . ($hasMeasurements === 'yes' ? 'Oui' : 'Non') . "
+        ";
+        
+        sendEmail(ADMIN_EMAIL, $adminEmailSubject, $adminEmailBody);
         
         sendJSONResponse([
             'success' => true,
-            'message' => 'Commande enregistree avec succes',
+            'message' => 'Demande envoyée avec succès',
             'order_number' => $orderNumber,
-            'order_id' => $order_id
+            'order_id' => $orderId
         ]);
         
     } catch (Exception $e) {
         logError("Erreur createCustomOrder: " . $e->getMessage());
         sendJSONResponse([
             'success' => false,
-            'message' => 'Erreur lors de l\'enregistrement'
+            'message' => 'Erreur lors de la création'
         ], 500);
     }
 }
 
-// RECUPERER TOUTES LES COMMANDES (Admin)
+// OBTENIR TOUTES LES COMMANDES SUR MESURE (Admin)
 elseif ($action === 'getAllCustomOrders') {
     $token = $_GET['token'] ?? '';
     
     if (!isAdmin($token)) {
         sendJSONResponse([
             'success' => false,
-            'message' => 'Acces non autorise'
+            'message' => 'Accès non autorisé'
         ], 403);
     }
     
@@ -136,37 +150,81 @@ elseif ($action === 'getAllCustomOrders') {
             throw new Exception('Erreur de connexion');
         }
         
-        $status = $_GET['status'] ?? 'all';
-        
-        $sql = "SELECT * FROM custom_orders";
-        
-        if ($status !== 'all') {
-            $sql .= " WHERE status = ?";
-            $stmt = $conn->prepare($sql . " ORDER BY created_at DESC");
-            $stmt->execute([$status]);
-        } else {
-            $stmt = $conn->prepare($sql . " ORDER BY created_at DESC");
-            $stmt->execute();
-        }
-        
+        $stmt = $conn->query("
+            SELECT id, order_number, full_name, email, phone, garment_type, category, 
+                   occasion, budget, status, created_at, deadline
+            FROM custom_orders
+            ORDER BY created_at DESC
+        ");
         $orders = $stmt->fetchAll();
         
         sendJSONResponse([
             'success' => true,
-            'orders' => $orders
+            'orders' => $orders,
+            'count' => count($orders)
         ]);
         
     } catch (Exception $e) {
         logError("Erreur getAllCustomOrders: " . $e->getMessage());
         sendJSONResponse([
             'success' => false,
-            'message' => 'Erreur lors de la recuperation'
+            'message' => 'Erreur'
         ], 500);
     }
 }
 
-// METTRE A JOUR LE STATUT (Admin)
-elseif ($action === 'updateOrderStatus') {
+// OBTENIR LES DÉTAILS D'UNE COMMANDE SUR MESURE
+elseif ($action === 'getCustomOrderDetails') {
+    $token = $_GET['token'] ?? '';
+    $order_id = intval($_GET['order_id'] ?? 0);
+    
+    if (!isAdmin($token)) {
+        sendJSONResponse([
+            'success' => false,
+            'message' => 'Accès non autorisé'
+        ], 403);
+    }
+    
+    try {
+        $conn = getDBConnection();
+        if (!$conn) {
+            throw new Exception('Erreur de connexion');
+        }
+        
+        $stmt = $conn->prepare("
+            SELECT * FROM custom_orders WHERE id = ?
+        ");
+        $stmt->execute([$order_id]);
+        $order = $stmt->fetch();
+        
+        if (!$order) {
+            sendJSONResponse([
+                'success' => false,
+                'message' => 'Commande non trouvée'
+            ], 404);
+        }
+        
+        // Décoder les images de référence
+        if ($order['reference_images']) {
+            $order['reference_images'] = json_decode($order['reference_images'], true);
+        }
+        
+        sendJSONResponse([
+            'success' => true,
+            'order' => $order
+        ]);
+        
+    } catch (Exception $e) {
+        logError("Erreur getCustomOrderDetails: " . $e->getMessage());
+        sendJSONResponse([
+            'success' => false,
+            'message' => 'Erreur'
+        ], 500);
+    }
+}
+
+// METTRE À JOUR LE STATUT (Admin)
+elseif ($action === 'updateCustomOrderStatus') {
     $token = $input['token'] ?? '';
     $order_id = intval($input['order_id'] ?? 0);
     $status = sanitizeInput($input['status'] ?? '');
@@ -174,8 +232,17 @@ elseif ($action === 'updateOrderStatus') {
     if (!isAdmin($token)) {
         sendJSONResponse([
             'success' => false,
-            'message' => 'Acces non autorise'
+            'message' => 'Accès non autorisé'
         ], 403);
+    }
+    
+    $validStatuses = ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled'];
+    
+    if (!in_array($status, $validStatuses)) {
+        sendJSONResponse([
+            'success' => false,
+            'message' => 'Statut invalide'
+        ], 400);
     }
     
     try {
@@ -193,51 +260,14 @@ elseif ($action === 'updateOrderStatus') {
         
         sendJSONResponse([
             'success' => true,
-            'message' => 'Statut mis a jour'
+            'message' => 'Statut mis à jour'
         ]);
         
     } catch (Exception $e) {
-        logError("Erreur updateOrderStatus: " . $e->getMessage());
+        logError("Erreur updateCustomOrderStatus: " . $e->getMessage());
         sendJSONResponse([
             'success' => false,
-            'message' => 'Erreur lors de la mise a jour'
-        ], 500);
-    }
-}
-
-// OBTENIR UNE COMMANDE PAR NUMERO
-elseif ($action === 'getOrderByNumber') {
-    $orderNumber = sanitizeInput($_GET['order_number'] ?? '');
-    
-    try {
-        $conn = getDBConnection();
-        if (!$conn) {
-            throw new Exception('Erreur de connexion');
-        }
-        
-        $stmt = $conn->prepare("
-            SELECT * FROM custom_orders WHERE order_number = ?
-        ");
-        $stmt->execute([$orderNumber]);
-        $order = $stmt->fetch();
-        
-        if ($order) {
-            sendJSONResponse([
-                'success' => true,
-                'order' => $order
-            ]);
-        } else {
-            sendJSONResponse([
-                'success' => false,
-                'message' => 'Commande non trouvee'
-            ], 404);
-        }
-        
-    } catch (Exception $e) {
-        logError("Erreur getOrderByNumber: " . $e->getMessage());
-        sendJSONResponse([
-            'success' => false,
-            'message' => 'Erreur lors de la recuperation'
+            'message' => 'Erreur'
         ], 500);
     }
 }

@@ -1,9 +1,9 @@
 <?php
 /**
- * API Gestion des Messages de Contact - MH Couture
- * Fichier: php/api/contact.php
+ * ============================================
+ * FICHIER: php/api/contact.php (COMPLET)
+ * ============================================
  */
-
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/functions.php';
 
@@ -22,11 +22,10 @@ if ($action === 'sendContactMessage') {
     $message = sanitizeInput($input['message'] ?? '');
     
     // Validation
-    if (empty($firstName) || empty($lastName) || empty($email) || 
-        empty($subject) || empty($message)) {
+    if (empty($firstName) || empty($lastName) || empty($email) || empty($subject) || empty($message)) {
         sendJSONResponse([
             'success' => false,
-            'message' => 'Tous les champs obligatoires doivent etre remplis'
+            'message' => 'Tous les champs obligatoires doivent être remplis'
         ], 400);
     }
     
@@ -43,11 +42,9 @@ if ($action === 'sendContactMessage') {
             throw new Exception('Erreur de connexion');
         }
         
-        // Inserer le message
         $stmt = $conn->prepare("
-            INSERT INTO contact_messages 
-            (first_name, last_name, email, phone, subject, message, created_at, status)
-            VALUES (?, ?, ?, ?, ?, ?, NOW(), 'unread')
+            INSERT INTO contact_messages (first_name, last_name, email, phone, subject, message, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'unread', NOW())
         ");
         
         $stmt->execute([
@@ -59,50 +56,58 @@ if ($action === 'sendContactMessage') {
             $message
         ]);
         
-        $message_id = $conn->lastInsertId();
-        
-        // Envoyer un email de notification
-        $emailSubject = "Nouveau message de contact: $subject";
+        // Envoyer un email de confirmation au client
+        $emailSubject = "Confirmation de réception - MH Couture";
         $emailBody = "
-Nouveau message recu sur MH Couture
+Bonjour $firstName $lastName,
 
-De: $firstName $lastName
+Nous avons bien reçu votre message concernant: $subject
+
+Nous vous répondrons dans les plus brefs délais.
+
+Cordialement,
+L'équipe MH Couture
+        ";
+        
+        sendEmail($email, $emailSubject, $emailBody);
+        
+        // Notifier l'admin
+        $adminEmailSubject = "Nouveau message de contact - MH Couture";
+        $adminEmailBody = "
+Nouveau message reçu de:
+Nom: $firstName $lastName
 Email: $email
-Telephone: $phone
+Téléphone: $phone
 Sujet: $subject
 
 Message:
 $message
-
----
-Message ID: $message_id
         ";
         
-        sendEmail('info@mhcouture.com', $emailSubject, $emailBody, $email);
+        sendEmail(ADMIN_EMAIL, $adminEmailSubject, $adminEmailBody);
         
         sendJSONResponse([
             'success' => true,
-            'message' => 'Message envoye avec succes',
-            'message_id' => $message_id
+            'message' => 'Message envoyé avec succès'
         ]);
         
     } catch (Exception $e) {
-        logError("Erreur send contact: " . $e->getMessage());
+        logError("Erreur sendContactMessage: " . $e->getMessage());
         sendJSONResponse([
             'success' => false,
-            'message' => 'Erreur lors de l\'envoi du message'
+            'message' => 'Erreur lors de l\'envoi'
         ], 500);
     }
 }
 
-// RECUPERER TOUS LES MESSAGES (Admin)
+// OBTENIR TOUS LES MESSAGES (Admin)
 elseif ($action === 'getAllMessages') {
     $token = $_GET['token'] ?? '';
     
     if (!isAdmin($token)) {
         sendJSONResponse([
             'success' => false,
-            'message' => 'Acces non autorise'
+            'message' => 'Accès non autorisé'
         ], 403);
     }
     
@@ -112,31 +117,24 @@ elseif ($action === 'getAllMessages') {
             throw new Exception('Erreur de connexion');
         }
         
-        $status = $_GET['status'] ?? 'all';
-        
-        $sql = "SELECT * FROM contact_messages";
-        
-        if ($status !== 'all') {
-            $sql .= " WHERE status = ?";
-            $stmt = $conn->prepare($sql . " ORDER BY created_at DESC");
-            $stmt->execute([$status]);
-        } else {
-            $stmt = $conn->prepare($sql . " ORDER BY created_at DESC");
-            $stmt->execute();
-        }
-        
+        $stmt = $conn->query("
+            SELECT id, first_name, last_name, email, phone, subject, message, status, created_at
+            FROM contact_messages
+            ORDER BY created_at DESC
+        ");
         $messages = $stmt->fetchAll();
         
         sendJSONResponse([
             'success' => true,
-            'messages' => $messages
+            'messages' => $messages,
+            'count' => count($messages)
         ]);
         
     } catch (Exception $e) {
         logError("Erreur getAllMessages: " . $e->getMessage());
         sendJSONResponse([
             'success' => false,
-            'message' => 'Erreur lors de la recuperation'
+            'message' => 'Erreur'
         ], 500);
     }
 }
@@ -149,7 +147,7 @@ elseif ($action === 'markAsRead') {
     if (!isAdmin($token)) {
         sendJSONResponse([
             'success' => false,
-            'message' => 'Acces non autorise'
+            'message' => 'Accès non autorisé'
         ], 403);
     }
     
@@ -159,56 +157,19 @@ elseif ($action === 'markAsRead') {
             throw new Exception('Erreur de connexion');
         }
         
-        $stmt = $conn->prepare("
-            UPDATE contact_messages SET status = 'read' WHERE id = ?
-        ");
+        $stmt = $conn->prepare("UPDATE contact_messages SET status = 'read' WHERE id = ?");
         $stmt->execute([$message_id]);
         
         sendJSONResponse([
             'success' => true,
-            'message' => 'Message marque comme lu'
+            'message' => 'Marqué comme lu'
         ]);
         
     } catch (Exception $e) {
         logError("Erreur markAsRead: " . $e->getMessage());
         sendJSONResponse([
             'success' => false,
-            'message' => 'Erreur lors de la mise a jour'
-        ], 500);
-    }
-}
-
-// SUPPRIMER UN MESSAGE (Admin)
-elseif ($action === 'deleteMessage') {
-    $token = $input['token'] ?? '';
-    $message_id = intval($input['message_id'] ?? 0);
-    
-    if (!isAdmin($token)) {
-        sendJSONResponse([
-            'success' => false,
-            'message' => 'Acces non autorise'
-        ], 403);
-    }
-    
-    try {
-        $conn = getDBConnection();
-        if (!$conn) {
-            throw new Exception('Erreur de connexion');
-        }
-        
-        $stmt = $conn->prepare("DELETE FROM contact_messages WHERE id = ?");
-        $stmt->execute([$message_id]);
-        
-        sendJSONResponse([
-            'success' => true,
-            'message' => 'Message supprime'
-        ]);
-        
-    } catch (Exception $e) {
-        logError("Erreur deleteMessage: " . $e->getMessage());
-        sendJSONResponse([
-            'success' => false,
-            'message' => 'Erreur lors de la suppression'
+            'message' => 'Erreur'
         ], 500);
     }
 }
@@ -219,4 +180,3 @@ else {
         'message' => 'Action non reconnue'
     ], 400);
 }
-?>
