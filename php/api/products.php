@@ -241,8 +241,16 @@ elseif ($action === 'update') {
 // SUPPRIMER UN PRODUIT (ADMIN)
 // ================================
 elseif ($action === 'delete') {
-    $input = getJSONInput();
+    // Récupérer les données JSON
+    $input = json_decode(file_get_contents('php://input'), true);
+    
+    // Si pas de données JSON, essayer $_POST
+    if (!$input) {
+        $input = $_POST;
+    }
+    
     $token = $input['token'] ?? '';
+    $id = intval($input['id'] ?? 0);
 
     if (!isAdmin($token)) {
         sendJSONResponse([
@@ -253,7 +261,6 @@ elseif ($action === 'delete') {
     }
 
     try {
-        $id = intval($input['id'] ?? 0);
         if (!$id) {
             throw new Exception('ID manquant');
         }
