@@ -332,7 +332,7 @@ $adminEmail = $user['email'];
                             </div>
                             <div class="form-group">
                                 <label>Mot de passe</label>
-                                <input type="password" name="smtp_password">
+                                <input type="password" name="smtp_password" autocomplete="current-password">
                             </div>
                             <button type="submit" class="btn-primary">Enregistrer</button>
                         </form>

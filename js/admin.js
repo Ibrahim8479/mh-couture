@@ -6,6 +6,14 @@ let allProducts = [];
 let allOrders = [];
 let allUsers = [];
 
+// Resolve image URL: prefer absolute URLs, otherwise make it root-relative, fallback to placeholder
+function resolveImageUrl(url, fallback = 'https://via.placeholder.com/50') {
+    if (!url) return fallback;
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('/')) return url;
+    return '/' + url;
+} 
+
 // INITIALISATION
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Admin page loaded');
@@ -174,7 +182,7 @@ function displayProducts(products) {
     
     tbody.innerHTML = products.map(product => `
         <tr>
-            <td><img src="${product.image_url || 'https://via.placeholder.com/50'}" alt="${product.name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;"></td>
+            <td><img src="${resolveImageUrl(product.image_url, 'https://via.placeholder.com/50')}" alt="${product.name}" onerror="this.src='https://via.placeholder.com/50'" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;"></td>
             <td><strong>${product.name}</strong></td>
             <td>${getCategoryName(product.category)}</td>
             <td>${parseInt(product.price).toLocaleString('fr-FR')} FCFA</td>
@@ -366,9 +374,8 @@ function openProductModal(productId = null) {
             document.getElementById('productDescription').value = product.description || '';
             document.getElementById('isCustom').checked = product.is_custom == 1;
             
-            if (product.image_url) {
-                preview.innerHTML = `<img src="${product.image_url}" style="max-width: 200px; border-radius: 8px;">`;
-            }
+            // always resolve image path (absolute or root-relative) and provide a fallback
+            preview.innerHTML = `<img src="${resolveImageUrl(product.image_url, 'https://via.placeholder.com/200')}" onerror="this.src='https://via.placeholder.com/200'" style="max-width: 200px; border-radius: 8px;">`;
         }
     } else {
         document.getElementById('modalTitle').textContent = 'Ajouter un produit';

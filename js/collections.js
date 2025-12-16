@@ -4,6 +4,14 @@ let allProducts = [];
 let currentCategory = 'all';
 let currentSort = 'newest';
 
+// Resolve image URL: prefer absolute URLs, otherwise make it root-relative, fallback to placeholder
+function resolveImageUrl(url, fallback = 'https://via.placeholder.com/300x400/d97642/ffffff?text=MH+Couture') {
+    if (!url) return fallback;
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('/')) return url;
+    return '/' + url;
+} 
+
 // Produits de démonstration
 const demoProducts = [
     {
@@ -109,7 +117,7 @@ function displayProducts(products) {
     
     grid.innerHTML = products.map(product => `
         <div class="product-card" data-category="${product.category.toLowerCase()}">
-            <img src="${product.image_url || 'https://via.placeholder.com/300x400/d97642/ffffff?text=MH+Couture'}" 
+            <img src="${resolveImageUrl(product.image_url, 'https://via.placeholder.com/300x400/d97642/ffffff?text=MH+Couture')}" 
                  alt="${product.name}" 
                  class="product-image"
                  onerror="this.src='https://via.placeholder.com/300x400/d97642/ffffff?text=MH+Couture'">
