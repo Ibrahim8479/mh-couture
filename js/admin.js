@@ -1,274 +1,313 @@
-// admin.js - VERSION COMPLÈTE ET CORRIGÉE
-// Fichier: js/admin.js
+// admin.js — VERSION CORRIGÉE ET STABLE
+// Compatible avec products.php (sans WHERE stock > 0)
 
 let currentSection = 'dashboard';
 let allProducts = [];
-let allOrders = [];
-let allUsers = [];
 
-/* ===============================
-   INITIALISATION
-================================ */
-document.addEventListener('DOMContentLoaded', function () {
-    console.log('Admin page loaded');
-
+// ===============================
+// INITIALISATION
+// ===============================
+document.addEventListener('DOMContentLoaded', () => {
     setupNavigation();
-    setupProductModal();
-    setupFormHandlers();
-
-    // 🔥 CHARGER LA SECTION ACTIVE AU DÉMARRAGE
-    const activeLink = document.querySelector('.nav-link.active');
-    if (activeLink) {
-        showSection(activeLink.dataset.section);
-    } else {
-        showSection('dashboard');
-    }
-
     loadDashboardData();
+    setupProductModal();
 });
 
-/* ===============================
-   NAVIGATION
-================================ */
+// ===============================
+// NAVIGATION
+// ===============================
 function setupNavigation() {
     const navLinks = document.querySelectorAll('.nav-link');
 
     navLinks.forEach(link => {
-        link.addEventListener('click', function (e) {
+        link.addEventListener('click', e => {
             e.preventDefault();
-
             navLinks.forEach(l => l.classList.remove('active'));
-            this.classList.add('active');
-
-            showSection(this.dataset.section);
+            link.classList.add('active');
+            showSection(link.dataset.section);
         });
     });
 }
 
-/* ===============================
-   AFFICHER UNE SECTION
-================================ */
 function showSection(section) {
-    console.log('Showing section:', section);
-
     document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
-
-    const sectionElement = document.getElementById(section + '-section');
-    if (sectionElement) sectionElement.classList.add('active');
+    const el = document.getElementById(section + '-section');
+    if (el) el.classList.add('active');
 
     const titles = {
         dashboard: 'Tableau de bord',
         products: 'Gestion des Produits',
         orders: 'Gestion des Commandes',
         users: 'Gestion des Utilisateurs',
-        'custom-orders': 'Commandes sur mesure',
-        messages: 'Messages de contact',
         settings: 'Paramètres'
     };
+    const pageTitle = document.getElementById('pageTitle');
+    if (pageTitle) pageTitle.textContent = titles[section] || section;
 
-    document.getElementById('pageTitle').textContent = titles[section] || section;
     currentSection = section;
 
-    setTimeout(() => {
-        if (section === 'products') {
+    if (section === 'products') {
+        setTimeout(() => {
             loadProducts();
             setupProductFilters();
-        } else if (section === 'orders') {
-            loadOrders();
-        } else if (section === 'users') {
-            loadUsers();
-        } else if (section === 'custom-orders') {
-            loadCustomOrders();
-        } else if (section === 'messages') {
-            loadMessages();
-        }
-    }, 50);
+        }, 50);
+    }
 }
 
-/* ===============================
-   DASHBOARD
-================================ */
+// ===============================
+// DASHBOARD
+// ===============================
 function loadDashboardData() {
-    fetch(`php/api/admin.php?action=getDashboardStats&token=${encodeURIComponent(getAuthToken())}`)
+    const token = getAuthToken();
+    if (!token) return;
+
+    fetch('php/api/admin.php?action=getDashboardStats&token=' + encodeURIComponent(token))
         .then(r => r.json())
         .then(data => {
             if (!data.success) return;
-            document.getElementById('totalProducts').textContent = data.stats.products;
-            document.getElementById('totalOrders').textContent = data.stats.orders;
-            document.getElementById('totalUsers').textContent = data.stats.users;
-            document.getElementById('totalRevenue').textContent = data.stats.revenue + ' FCFA';
+            document.getElementById('totalProducts').textContent = data.stats.products || 0;
+            document.getElementById('totalOrders').textContent = data.stats.orders || 0;
+            document.getElementById('totalUsers').textContent = data.stats.users || 0;
+            document.getElementById('totalRevenue').textContent = (data.stats.revenue || 0) + ' FCFA';
         })
-        .catch(err => console.error('Dashboard error:', err));
-
-    loadRecentOrders();
+        .catch(() => {});
 }
 
-/* ===============================
-   COMMANDES RÉCENTES
-================================ */
-function loadRecentOrders() {
-    fetch(`php/api/admin.php?action=getRecentOrders&token=${encodeURIComponent(getAuthToken())}&limit=5`)
-        .then(r => r.json())
-        .then(data => data.success && displayRecentOrders(data.orders))
-        .catch(err => console.error(err));
-}
-
-function displayRecentOrders(orders) {
-    const tbody = document.querySelector('#recentOrdersTable tbody');
-
-    if (!orders || orders.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="no-data">Aucune commande</td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = orders.map(o => `
-        <tr>
-            <td>${o.order_number}</td>
-            <td>${o.customer_name || '-'}</td>
-            <td>${parseInt(o.total_amount).toLocaleString('fr-FR')} FCFA</td>
-            <td>${getStatusText(o.status)}</td>
-            <td>${formatDate(o.created_at)}</td>
-            <td><button onclick="viewOrderDetails(${o.id})">Voir</button></td>
-        </tr>
-    `).join('');
-}
-
-/* ===============================
-   PRODUITS
-================================ */
+// ===============================
+// PRODUITS — CHARGEMENT
+// ===============================
 function loadProducts() {
     fetch('php/api/products.php?action=getAll')
         .then(r => r.json())
         .then(data => {
-            if (!data.success) return;
-            allProducts = data.products;
-            displayProducts(allProducts);
+            if (data.success && Array.isArray(data.products)) {
+                allProducts = data.products;
+                displayProducts(allProducts);
+            } else {
+                showProductsError(data.message || 'Impossible de charger');
+            }
         })
-        .catch(err => console.error('Products error:', err));
+        .catch(() => showProductsError('Erreur de connexion'));
 }
 
+// ===============================
+// PRODUITS — AFFICHAGE
+// ===============================
 function displayProducts(products) {
     const tbody = document.querySelector('#productsTable tbody');
+    if (!tbody) return;
 
-    if (!products || products.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="no-data">Aucun produit</td></tr>`;
+    if (!products.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="no-data">Aucun produit</td></tr>';
         return;
     }
 
-    tbody.innerHTML = products.map(p => `
+    tbody.innerHTML = products.map(p => {
+        const img = p.image_url ? '/' + p.image_url : 'https://via.placeholder.com/50';
+        const price = Number(p.price || 0).toLocaleString('fr-FR');
+        const category = getCategoryName(p.category);
+
+        return `
         <tr>
-            <td><img src="${p.image_url || 'https://via.placeholder.com/50'}" width="50"></td>
-            <td>${p.name}</td>
-            <td>${getCategoryName(p.category)}</td>
-            <td>${parseInt(p.price).toLocaleString('fr-FR')} FCFA</td>
-            <td>${p.stock}</td>
+            <td><img src="${img}" class="product-img" alt="${p.name || ''}"></td>
+            <td>${p.name || ''}</td>
+            <td>${category}</td>
+            <td>${price} FCFA</td>
+            <td>${p.stock ?? 0}</td>
             <td>
-                <button onclick="editProduct(${p.id})">✏️</button>
-                <button onclick="deleteProduct(${p.id})">🗑</button>
+                <div class="action-btns">
+                    <button class="btn-edit" onclick="editProduct(${p.id})">Modifier</button>
+                    <button class="btn-delete" onclick="deleteProduct(${p.id})">Supprimer</button>
+                </div>
             </td>
-        </tr>
-    `).join('');
+        </tr>`;
+    }).join('');
 }
 
-/* ===============================
-   COMMANDES
-================================ */
-function loadOrders() {
-    fetch(`php/api/admin.php?action=getAllOrders&token=${encodeURIComponent(getAuthToken())}`)
-        .then(r => r.json())
-        .then(d => d.success && displayOrders(d.orders));
+function showProductsError(message) {
+    const tbody = document.querySelector('#productsTable tbody');
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="no-data">${message}</td></tr>`;
 }
 
-function displayOrders(orders) {
-    const tbody = document.querySelector('#ordersTable tbody');
-    if (!orders || orders.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7">Aucune commande</td></tr>`;
-        return;
+// ===============================
+// MODAL PRODUIT
+// ===============================
+function openProductModal(productId = null) {
+    const modal = document.getElementById('productModal');
+    const form = document.getElementById('productForm');
+    if (!modal || !form) return;
+
+    form.reset();
+    const preview = document.getElementById('imagePreview');
+    if (preview) preview.innerHTML = '';
+
+    if (productId) {
+        document.getElementById('modalTitle').textContent = 'Modifier le produit';
+        const product = allProducts.find(p => p.id === productId);
+        if (product) {
+            document.getElementById('productId').value = product.id;
+            document.getElementById('productName').value = product.name || '';
+            document.getElementById('productCategory').value = product.category || '';
+            document.getElementById('productPrice').value = product.price || 0;
+            document.getElementById('productStock').value = product.stock || 0;
+            document.getElementById('productDescription').value = product.description || '';
+            document.getElementById('isCustom').checked = product.is_custom == 1;
+        }
+    } else {
+        document.getElementById('modalTitle').textContent = 'Ajouter un produit';
     }
-    tbody.innerHTML = orders.map(o => `
-        <tr>
-            <td>${o.order_number}</td>
-            <td>${o.customer_name}</td>
-            <td>${o.items_count}</td>
-            <td>${o.total_amount} FCFA</td>
-            <td>${getStatusText(o.status)}</td>
-            <td>${formatDate(o.created_at)}</td>
-            <td><button onclick="viewOrderDetails(${o.id})">Voir</button></td>
-        </tr>
-    `).join('');
+
+    modal.classList.add('active');
 }
 
-/* ===============================
-   UTILISATEURS
-================================ */
-function loadUsers() {
-    fetch(`php/api/admin.php?action=getAllUsers&token=${encodeURIComponent(getAuthToken())}`)
-        .then(r => r.json())
-        .then(d => d.success && displayUsers(d.users));
+function closeProductModal() {
+    const modal = document.getElementById('productModal');
+    if (modal) modal.classList.remove('active');
 }
 
-function displayUsers(users) {
-    const tbody = document.querySelector('#usersTable tbody');
-    if (!users || users.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7">Aucun utilisateur</td></tr>`;
-        return;
+function setupProductModal() {
+    const modal = document.getElementById('productModal');
+    const form = document.getElementById('productForm');
+    const imageInput = document.getElementById('productImage');
+    if (!modal || !form) return;
+
+    const closeBtn = modal.querySelector('.close-btn');
+    if (closeBtn) closeBtn.addEventListener('click', closeProductModal);
+
+    window.addEventListener('click', e => { if (e.target === modal) closeProductModal(); });
+
+    if (imageInput) {
+        imageInput.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = ev => {
+                const preview = document.getElementById('imagePreview');
+                if (preview) preview.innerHTML = `<img src="${ev.target.result}">`;
+            };
+            reader.readAsDataURL(file);
+        });
     }
-    tbody.innerHTML = users.map(u => `
-        <tr>
-            <td>${u.id}</td>
-            <td>${u.first_name} ${u.last_name}</td>
-            <td>${u.email}</td>
-            <td>${u.phone || '-'}</td>
-            <td>${formatDate(u.created_at)}</td>
-            <td>${u.is_admin == 1 ? 'Oui' : 'Non'}</td>
-            <td><button onclick="viewUserDetails(${u.id})">Voir</button></td>
-        </tr>
-    `).join('');
+
+    form.addEventListener('submit', handleProductSubmit);
 }
 
-/* ===============================
-   UTILITAIRES
-================================ */
-function getAuthToken() {
-    return window.authToken || localStorage.getItem('authToken');
+// ===============================
+// SUBMIT PRODUIT
+// ===============================
+function handleProductSubmit(e) {
+    e.preventDefault();
+
+    const token = getAuthToken();
+    if (!token) return showError('Non authentifié');
+
+    const productId = document.getElementById('productId').value;
+    const formData = new FormData();
+
+    formData.append('action', productId ? 'update' : 'create');
+    formData.append('token', token);
+    if (productId) formData.append('id', productId);
+
+    formData.append('name', document.getElementById('productName').value);
+    formData.append('category', document.getElementById('productCategory').value);
+    formData.append('price', document.getElementById('productPrice').value);
+    formData.append('stock', document.getElementById('productStock').value);
+    formData.append('description', document.getElementById('productDescription').value);
+    formData.append('is_custom', document.getElementById('isCustom').checked ? 1 : 0);
+
+    const imageFile = document.getElementById('productImage').files[0];
+    if (imageFile) formData.append('image', imageFile);
+
+    fetch('php/api/products.php', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showSuccess(productId ? 'Produit modifié !' : 'Produit ajouté !');
+                closeProductModal();
+                loadProducts();
+            } else showError(data.message || 'Erreur');
+        })
+        .catch(() => showError('Erreur serveur'));
 }
 
-function getCategoryName(cat) {
-    return { homme: 'Homme', femme: 'Femme', enfant: 'Enfant' }[cat] || cat;
-}
-
-function getStatusText(s) {
-    return { pending: 'En attente', completed: 'Terminé', cancelled: 'Annulé' }[s] || s;
-}
-
-function formatDate(d) {
-    return new Date(d).toLocaleDateString('fr-FR');
-}
-
-/* ===============================
-   ACTIONS (stubs)
-================================ */
+// ===============================
+// ACTIONS
+// ===============================
 function editProduct(id) { openProductModal(id); }
-function deleteProduct(id) { alert('Supprimer produit ' + id); }
-function viewOrderDetails(id) { alert('Commande ' + id); }
-function viewUserDetails(id) { alert('Utilisateur ' + id); }
 
-/* ===============================
-   MODAL PRODUIT
-================================ */
-function openProductModal() {}
-function setupProductModal() {}
-function setupFormHandlers() {}
-function setupProductFilters() {}
-// Les fonctions openProductModal, setupProductModal, setupFormHandlers et setupProductFilters
-// doivent être implémentées pour gérer les interactions avec les produits.
-// Les fonctions openProductModal, setupProductModal, setupFormHandlers et setupProductFilters
-// doivent être implémentées pour gérer les interactions avec les produits. 
-// Elles sont laissées vides ici pour se concentrer sur la structure principale du fichier admin.js.
-// Elles sont laissées vides ici pour se concentrer sur la structure principale du fichier admin.js.
-// Elles sont laissées vides ici pour se concentrer sur la structure principale du fichier admin.js.
-// Elles sont laissées vides ici pour se concentrer sur la structure principale du fichier admin.js.
-// Elles sont laissées vides ici pour se concentrer sur la structure principale du fichier admin.js.
-// Elles sont laissées vides ici pour se concentrer sur la structure principale du fichier admin.js.
-// Elles sont laissées vides ici pour se concentrer sur la structure principale du fichier admin.js.    
-// Elles sont laissées vides ici pour se concentrer sur la structure principale du fichier admin.js.
+function deleteProduct(id) {
+    if (!confirm('Supprimer ce produit ?')) return;
+
+    fetch('php/api/products.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', id, token: getAuthToken() })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showSuccess('Produit supprimé');
+            loadProducts();
+        } else showError(data.message || 'Erreur');
+    })
+    .catch(() => showError('Erreur serveur'));
+}
+
+// ===============================
+// FILTRES
+// ===============================
+function setupProductFilters() {
+    const categoryFilter = document.getElementById('categoryFilter');
+    const searchInput = document.getElementById('productSearch');
+    if (!categoryFilter || !searchInput) return;
+
+    categoryFilter.addEventListener('change', filterProducts);
+    searchInput.addEventListener('input', filterProducts);
+}
+
+function filterProducts() {
+    const cat = document.getElementById('categoryFilter').value;
+    const q = document.getElementById('productSearch').value.toLowerCase();
+
+    let filtered = allProducts;
+    if (cat !== 'all') filtered = filtered.filter(p => (p.category || '').toLowerCase() === cat.toLowerCase());
+    if (q) filtered = filtered.filter(p => (p.name || '').toLowerCase().includes(q));
+
+    displayProducts(filtered);
+}
+
+// ===============================
+// UTILITAIRES
+// ===============================
+function getCategoryName(category) {
+    if (!category) return '—';
+    const map = { homme: 'Homme', femme: 'Femme', enfant: 'Enfant' };
+    return map[category.toLowerCase()] || category;
+}
+
+function getAuthToken() {
+    return getCookie('auth_token') || localStorage.getItem('authToken');
+}
+
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
+
+function showSuccess(message) {
+    notify('✅ ' + message, '#27ae60');
+}
+
+function showError(message) {
+    notify('❌ ' + message, '#e74c3c');
+}
+
+function notify(text, bg) {
+    const n = document.createElement('div');
+    n.style.cssText = `position:fixed;top:20px;right:20px;background:${bg};color:#fff;padding:16px 24px;border-radius:8px;z-index:10000;font-weight:600`;
+    n.textContent = text;
+    document.body.appendChild(n);
+    setTimeout(() => n.remove(), 3000);
+}
