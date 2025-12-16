@@ -2,7 +2,7 @@
 /**
  * Page Administration - MH Couture
  * Fichier: admin.php
- * CORRIGÉ pour Ibrahim@gmail.com
+ * VERSION COMPLÈTE ET CORRIGÉE
  */
 
 session_start();
@@ -15,7 +15,7 @@ if (!$token) {
     exit;
 }
 
-// Vérifier si admin (utiliser le champ is_admin de la BD)
+// Vérifier si admin
 require_once 'php/config/database.php';
 require_once 'php/includes/functions.php';
 
@@ -26,8 +26,8 @@ if (!$user || $user['is_admin'] != 1) {
     exit;
 }
 
-$adminName = $_SESSION['user_name'] ?? $user['first_name'] . ' ' . $user['last_name'] ?? 'Admin';
-$adminEmail = $_SESSION['user_email'] ?? $user['email'] ?? '';
+$adminName = $user['first_name'] . ' ' . $user['last_name'];
+$adminEmail = $user['email'];
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -39,25 +39,32 @@ $adminEmail = $_SESSION['user_email'] ?? $user['email'] ?? '';
 </head>
 <body>
     <div class="admin-container">
+        <!-- SIDEBAR -->
         <aside class="sidebar">
             <div class="logo">
                 <h2>MH Couture</h2>
                 <p>Administration</p>
             </div>
             <nav class="admin-nav">
-                <a href="admin.php" class="nav-link active" data-section="dashboard">
+                <a href="#" class="nav-link active" data-section="dashboard">
                     📊 Tableau de bord
                 </a>
-                <a href="admin.php?section=products" class="nav-link" data-section="products">
+                <a href="#" class="nav-link" data-section="products">
                     📦 Produits
                 </a>
-                <a href="admin.php?section=orders" class="nav-link" data-section="orders">
+                <a href="#" class="nav-link" data-section="orders">
                     📋 Commandes
                 </a>
-                <a href="admin.php?section=users" class="nav-link" data-section="users">
+                <a href="#" class="nav-link" data-section="users">
                     👥 Utilisateurs
                 </a>
-                <a href="admin.php?section=settings" class="nav-link" data-section="settings">
+                <a href="#" class="nav-link" data-section="custom-orders">
+                    ✂️ Commandes sur mesure
+                </a>
+                <a href="#" class="nav-link" data-section="messages">
+                    💬 Messages
+                </a>
+                <a href="#" class="nav-link" data-section="settings">
                     ⚙️ Paramètres
                 </a>
             </nav>
@@ -67,6 +74,7 @@ $adminEmail = $_SESSION['user_email'] ?? $user['email'] ?? '';
             </div>
         </aside>
 
+        <!-- MAIN CONTENT -->
         <main class="main-content">
             <header class="admin-header">
                 <h1 id="pageTitle">Tableau de bord</h1>
@@ -77,7 +85,7 @@ $adminEmail = $_SESSION['user_email'] ?? $user['email'] ?? '';
                 </div>
             </header>
 
-            <!-- Dashboard Section -->
+            <!-- DASHBOARD SECTION -->
             <section id="dashboard-section" class="content-section active">
                 <div class="stats-grid">
                     <div class="stat-card">
@@ -121,11 +129,12 @@ $adminEmail = $_SESSION['user_email'] ?? $user['email'] ?? '';
                                     <th>Montant</th>
                                     <th>Statut</th>
                                     <th>Date</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td colspan="5" class="no-data">Aucune commande récente</td>
+                                    <td colspan="6" class="no-data">Chargement...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -133,7 +142,7 @@ $adminEmail = $_SESSION['user_email'] ?? $user['email'] ?? '';
                 </div>
             </section>
 
-            <!-- Products Section -->
+            <!-- PRODUCTS SECTION -->
             <section id="products-section" class="content-section">
                 <div class="section-header">
                     <h2>Gestion des Produits</h2>
@@ -171,7 +180,7 @@ $adminEmail = $_SESSION['user_email'] ?? $user['email'] ?? '';
                 </div>
             </section>
 
-            <!-- Orders Section -->
+            <!-- ORDERS SECTION -->
             <section id="orders-section" class="content-section">
                 <div class="section-header">
                     <h2>Gestion des Commandes</h2>
@@ -191,14 +200,14 @@ $adminEmail = $_SESSION['user_email'] ?? $user['email'] ?? '';
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="7" class="no-data">Aucune commande</td>
+                                <td colspan="7" class="no-data">Chargement...</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </section>
 
-            <!-- Users Section -->
+            <!-- USERS SECTION -->
             <section id="users-section" class="content-section">
                 <div class="section-header">
                     <h2>Gestion des Utilisateurs</h2>
@@ -212,20 +221,74 @@ $adminEmail = $_SESSION['user_email'] ?? $user['email'] ?? '';
                                 <th>Email</th>
                                 <th>Téléphone</th>
                                 <th>Date d'inscription</th>
-                                <th>Statut Admin</th>
+                                <th>Admin</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="7" class="no-data">Aucun utilisateur</td>
+                                <td colspan="7" class="no-data">Chargement...</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </section>
 
-            <!-- Settings Section -->
+            <!-- CUSTOM ORDERS SECTION -->
+            <section id="custom-orders-section" class="content-section">
+                <div class="section-header">
+                    <h2>Commandes sur mesure</h2>
+                </div>
+                <div class="table-container">
+                    <table id="customOrdersTable">
+                        <thead>
+                            <tr>
+                                <th>N° Commande</th>
+                                <th>Client</th>
+                                <th>Type</th>
+                                <th>Catégorie</th>
+                                <th>Budget</th>
+                                <th>Statut</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="8" class="no-data">Chargement...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- MESSAGES SECTION -->
+            <section id="messages-section" class="content-section">
+                <div class="section-header">
+                    <h2>Messages de contact</h2>
+                </div>
+                <div class="table-container">
+                    <table id="messagesTable">
+                        <thead>
+                            <tr>
+                                <th>Nom</th>
+                                <th>Email</th>
+                                <th>Sujet</th>
+                                <th>Statut</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="6" class="no-data">Chargement...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- SETTINGS SECTION -->
             <section id="settings-section" class="content-section">
                 <h2>Paramètres</h2>
                 <div class="settings-container">
@@ -234,15 +297,68 @@ $adminEmail = $_SESSION['user_email'] ?? $user['email'] ?? '';
                         <form id="siteSettingsForm">
                             <div class="form-group">
                                 <label>Nom du site</label>
-                                <input type="text" value="MH Couture">
+                                <input type="text" name="site_name" value="MH Couture">
                             </div>
                             <div class="form-group">
                                 <label>Email de contact</label>
-                                <input type="email" value="info@mhcouture.com">
+                                <input type="email" name="contact_email" value="info@mhcouture.com">
                             </div>
                             <div class="form-group">
                                 <label>Téléphone</label>
-                                <input type="tel" value="+227 91717508">
+                                <input type="tel" name="phone" value="+227 91717508">
+                            </div>
+                            <div class="form-group">
+                                <label>Adresse</label>
+                                <textarea name="address" rows="3">Niamey, Niger</textarea>
+                            </div>
+                            <button type="submit" class="btn-primary">Enregistrer</button>
+                        </form>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3>Configuration des emails</h3>
+                        <form id="emailSettingsForm">
+                            <div class="form-group">
+                                <label>Serveur SMTP</label>
+                                <input type="text" name="smtp_host" value="smtp.gmail.com">
+                            </div>
+                            <div class="form-group">
+                                <label>Port SMTP</label>
+                                <input type="number" name="smtp_port" value="587">
+                            </div>
+                            <div class="form-group">
+                                <label>Nom d'utilisateur</label>
+                                <input type="text" name="smtp_username">
+                            </div>
+                            <div class="form-group">
+                                <label>Mot de passe</label>
+                                <input type="password" name="smtp_password">
+                            </div>
+                            <button type="submit" class="btn-primary">Enregistrer</button>
+                        </form>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3>Paramètres de paiement</h3>
+                        <form id="paymentSettingsForm">
+                            <div class="form-group">
+                                <label>Mode de paiement</label>
+                                <select name="payment_mode">
+                                    <option value="test" selected>Test</option>
+                                    <option value="live">Production</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" name="enable_cash" checked>
+                                    Activer paiement en espèces
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" name="enable_mobile">
+                                    Activer Mobile Money
+                                </label>
                             </div>
                             <button type="submit" class="btn-primary">Enregistrer</button>
                         </form>
@@ -252,14 +368,14 @@ $adminEmail = $_SESSION['user_email'] ?? $user['email'] ?? '';
         </main>
     </div>
 
-    <!-- Product Modal -->
+    <!-- PRODUCT MODAL -->
     <div id="productModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="modalTitle">Ajouter un produit</h2>
                 <button class="close-btn" onclick="closeProductModal()">✕</button>
             </div>
-            <form id="productForm">
+            <form id="productForm" enctype="multipart/form-data">
                 <input type="hidden" id="productId">
                 
                 <div class="form-group">
@@ -319,7 +435,6 @@ $adminEmail = $_SESSION['user_email'] ?? $user['email'] ?? '';
         </div>
     </div>
 
-    <!-- Scripts -->
     <script>
         window.authToken = '<?= htmlspecialchars($token) ?>';
         window.isAdmin = true;
