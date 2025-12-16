@@ -1,132 +1,162 @@
-/* =========================================
-   ADMIN DASHBOARD — CSS STABLE & CORRIGÉ
-   ========================================= */
-
-/* RESET BASIQUE */
+/* ===============================
+   RESET
+================================ */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-html, body {
-    height: 100%;
-    overflow-x: hidden; /* ✅ FIX: empêche le scroll horizontal */
-    font-family: 'Segoe UI', Tahoma, sans-serif;
-    background: #f5f6fa;
+/* ===============================
+   BODY
+================================ */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f5f5f5;
+    overflow-x: hidden;
 }
 
-/* =========================================
+/* ===============================
    LAYOUT GLOBAL
-   ========================================= */
-
-.admin-wrapper {
-    display: flex;
+   ❌ AVANT : conflit grid + fixed
+   ✅ MAINTENANT : grid uniquement
+================================ */
+.admin-container {
+    display: grid;
+    grid-template-columns: 260px 1fr;
     min-height: 100vh;
-    width: 100%;
 }
 
-/* =========================================
+/* ===============================
    SIDEBAR
-   ========================================= */
-
+   ❌ SUPPRESSION position: fixed
+================================ */
 .sidebar {
-    width: 260px;
-    background: #1e1e2f;
-    color: #fff;
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    overflow-y: auto;
-    z-index: 100;
+    background: #2c3e50;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
 }
 
-.sidebar h2 {
-    padding: 20px;
-    text-align: center;
+/* ===============================
+   LOGO
+================================ */
+.sidebar .logo {
+    padding: 30px 20px;
+    border-bottom: 1px solid #34495e;
 }
 
-.sidebar ul {
-    list-style: none;
+.sidebar .logo h2 {
+    font-size: 22px;
 }
 
-.sidebar ul li a {
+.sidebar .logo p {
+    font-size: 12px;
+    color: #95a5a6;
+}
+
+/* ===============================
+   NAVIGATION
+================================ */
+.admin-nav {
+    flex: 1;
+    padding: 20px 0;
+}
+
+.nav-link {
     display: block;
     padding: 15px 20px;
-    color: #ccc;
+    color: #ecf0f1;
     text-decoration: none;
+    border-left: 4px solid transparent;
+    transition: all 0.3s;
 }
 
-.sidebar ul li a.active,
-.sidebar ul li a:hover {
-    background: #27293d;
-    color: #fff;
+.nav-link:hover {
+    background: #34495e;
+    border-left-color: #d97642;
 }
 
-/* =========================================
-   MAIN CONTENT (UNE SEULE FOIS ❗)
-   ========================================= */
+.nav-link.active {
+    background: #34495e;
+    border-left-color: #d97642;
+    color: #d97642;
+}
 
-/* ✅ FIX: IL Y AVAIT DEUX .main-content → UNIFIÉ */
+/* ===============================
+   FOOTER SIDEBAR
+================================ */
+.sidebar-footer {
+    padding: 20px;
+    border-top: 1px solid #34495e;
+}
+
+.btn-back,
+.btn-logout {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    text-align: center;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.btn-back {
+    background: #34495e;
+    color: white;
+}
+
+.btn-logout {
+    background: #e74c3c;
+    color: white;
+}
+
+/* ===============================
+   MAIN CONTENT
+   ❌ AVANT : margin-left: 260px
+   ✅ MAINTENANT : grid gère tout
+================================ */
 .main-content {
-    margin-left: 260px;
-    width: calc(100% - 260px);
     padding: 30px;
-    min-height: 100vh;
-    overflow-y: auto; /* ✅ FIX: scroll vertical */
-    background: #f5f6fa;
+    overflow-x: auto;
 }
 
-/* =========================================
+/* ===============================
    HEADER
-   ========================================= */
-
-.page-header {
+================================ */
+.admin-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 30px;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 20px;
 }
 
-.page-header h1 {
-    font-size: 26px;
-    font-weight: 600;
+.admin-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
-/* =========================================
-   DASHBOARD STATS
-   ========================================= */
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 20px;
-    margin-bottom: 40px;
-}
-
-.stat-card {
-    background: #fff;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-}
-
-.stat-card h3 {
-    font-size: 14px;
-    color: #666;
-}
-
-.stat-card p {
-    font-size: 26px;
+.avatar {
+    width: 40px;
+    height: 40px;
+    background: #d97642;
+    border-radius: 50%;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     font-weight: bold;
-    margin-top: 10px;
 }
 
-/* =========================================
-   CONTENT SECTIONS
-   ========================================= */
-
+/* ===============================
+   SECTIONS
+================================ */
 .content-section {
     display: none;
 }
@@ -135,10 +165,9 @@ html, body {
     display: block;
 }
 
-/* =========================================
-   FILTRES
-   ========================================= */
-
+/* ===============================
+   FILTER BAR
+================================ */
 .filters-bar {
     display: flex;
     gap: 15px;
@@ -147,208 +176,91 @@ html, body {
 
 .filters-bar input,
 .filters-bar select {
-    padding: 10px 12px;
+    padding: 10px 15px;
     border-radius: 8px;
-    border: 1px solid #ddd;
-    width: 100%;
+    border: 2px solid #e0e0e0;
 }
 
-/* =========================================
-   TABLES
-   ========================================= */
+.filters-bar input {
+    flex: 1;
+}
 
-.table-wrapper {
-    overflow-x: auto; /* ✅ FIX: tables ne cassent plus le layout */
+/* ===============================
+   TABLE
+================================ */
+.table-container {
+    background: white;
+    border-radius: 12px;
+    overflow-x: auto;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
 table {
     width: 100%;
     border-collapse: collapse;
-    background: #fff;
-    border-radius: 12px;
-    overflow: hidden;
-}
-
-thead {
-    background: #f0f0f0;
-}
-
-th, td {
-    padding: 14px 12px;
-    text-align: left;
-    font-size: 14px;
 }
 
 th {
-    font-weight: 600;
-    color: #333;
+    background: #f8f9fa;
+    padding: 15px;
+    text-align: left;
+    font-size: 13px;
+    text-transform: uppercase;
 }
 
-tr:not(:last-child) {
-    border-bottom: 1px solid #eee;
+td {
+    padding: 15px;
+    border-top: 1px solid #eee;
 }
-
-.no-data {
-    text-align: center;
-    color: #888;
-    padding: 30px;
-}
-
-/* =========================================
-   PRODUITS
-   ========================================= */
 
 .product-img {
     width: 50px;
     height: 50px;
-    border-radius: 8px;
     object-fit: cover;
-}
-
-/* =========================================
-   BOUTONS
-   ========================================= */
-
-button {
-    border: none;
-    cursor: pointer;
     border-radius: 6px;
-    padding: 8px 14px;
-    font-weight: 600;
 }
 
-.btn-edit {
-    background: #3498db;
-    color: #fff;
-}
-
-.btn-delete {
-    background: #e74c3c;
-    color: #fff;
-}
-
-.btn-view {
-    background: #2ecc71;
-    color: #fff;
-}
-
+/* ===============================
+   ACTION BUTTONS
+================================ */
 .action-btns {
     display: flex;
     gap: 8px;
 }
 
-/* =========================================
-   STATUS BADGES
-   ========================================= */
-
-.status-badge {
-    padding: 6px 10px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #fff;
+.btn-edit {
+    background: #3498db;
+    color: white;
 }
 
-.status-pending { background: #f39c12; }
-.status-processing { background: #3498db; }
-.status-completed { background: #2ecc71; }
-.status-cancelled { background: #e74c3c; }
-.status-unread { background: #e67e22; }
-.status-read { background: #7f8c8d; }
-
-/* =========================================
-   MODAL
-   ========================================= */
-
-.modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.5);
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
+.btn-delete {
+    background: #e74c3c;
+    color: white;
 }
 
-.modal.active {
-    display: flex;
-}
-
-.modal-content {
-    background: #fff;
-    width: 100%;
-    max-width: 600px;
-    border-radius: 12px;
-    padding: 30px;
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.close-btn {
+.btn-edit,
+.btn-delete {
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 22px;
 }
 
-/* =========================================
-   FORMULAIRES
-   ========================================= */
-
-form input,
-form textarea,
-form select {
-    width: 100%;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid #ddd;
-    margin-bottom: 15px;
-}
-
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-}
-
-/* =========================================
+/* ===============================
    RESPONSIVE
-   ========================================= */
-
+================================ */
 @media (max-width: 1024px) {
-    .main-content {
-        margin-left: 0; /* ✅ FIX: sidebar overlay */
-        width: 100%;
+    .admin-container {
+        grid-template-columns: 1fr;
     }
 
     .sidebar {
-        position: relative;
-        width: 100%;
         height: auto;
     }
 }
 
 @media (max-width: 768px) {
-    .main-content {
-        padding: 20px;
-    }
-
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-
     .filters-bar {
         flex-direction: column;
-    }
-
-    table {
-        font-size: 12px;
-    }
-
-    th, td {
-        padding: 10px 8px;
     }
 }
