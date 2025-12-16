@@ -1,43 +1,47 @@
+
 /**
  * Script Administration - MH Couture
  * Fichier: js/admin.js
- * VERSION COMPLÈTE
  */
 
 // Variables globales
+const API_BASE = 'php/api/';
+let currentSection = 'dashboard';
 let allProducts = [];
 let allOrders = [];
 let allUsers = [];
 let allCustomOrders = [];
-let allMessages = [];
 
-// ==============================================
+// ========================================
 // INITIALISATION
-// ==============================================
+// ========================================
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Admin panel initialized');
-    console.log('Auth token:', window.authToken);
+    console.log('Admin JS chargé');
     
-    // Configurer la navigation
-    setupNavigation();
+    // Vérifier le token
+    if (!window.authToken) {
+        window.location.href = 'login.php';
+        return;
+    }
     
-    // Charger les données du dashboard
-    loadDashboardStats();
-    loadRecentOrders();
+    // Navigation
+    initNavigation();
     
-    // Configurer les événements
-    setupEventListeners();
+    // Charger le dashboard
+    loadDashboard();
     
-    // Charger les produits par défaut
-    loadAllProducts();
+    // Event listeners pour les modals
+    initModalEvents();
+    
+    // Event listeners pour les filtres
+    initFilterEvents();
 });
 
-// ==============================================
+// ========================================
 // NAVIGATION
-// ==============================================
-function setupNavigation() {
+// ========================================
+function initNavigation() {
     const navLinks = document.querySelectorAll('.nav-link');
-    const sections = document.querySelectorAll('.content-section');
     
     navLinks.forEach(link => {
         link.addEventListener('click', function(e) {
@@ -49,48 +53,57 @@ function setupNavigation() {
             // Ajouter active au lien cliqué
             this.classList.add('active');
             
-            // Cacher toutes les sections
-            sections.forEach(s => s.classList.remove('active'));
+            // Obtenir la section
+            const section = this.dataset.section;
+            currentSection = section;
             
-            // Afficher la section correspondante
-            const sectionId = this.dataset.section + '-section';
-            const section = document.getElementById(sectionId);
-            if (section) {
-                section.classList.add('active');
-                
-                // Mettre à jour le titre
-                const titles = {
-                    'dashboard': 'Tableau de bord',
-                    'products': 'Gestion des Produits',
-                    'orders': 'Gestion des Commandes',
-                    'users': 'Gestion des Utilisateurs',
-                    'custom-orders': 'Commandes sur mesure',
-                    'messages': 'Messages de contact',
-                    'settings': 'Paramètres'
-                };
-                document.getElementById('pageTitle').textContent = titles[this.dataset.section];
-                
-                // Charger les données de la section
-                loadSectionData(this.dataset.section);
+            // Cacher toutes les sections
+            document.querySelectorAll('.content-section').forEach(s => {
+                s.classList.remove('active');
+            });
+            
+            // Afficher la section demandée
+            const targetSection = document.getElementById(`${section}-section`);
+            if (targetSection) {
+                targetSection.classList.add('active');
             }
+            
+            // Charger les données de la section
+            loadSectionData(section);
+            
+            // Mettre à jour le titre
+            updatePageTitle(section);
         });
     });
+}
+
+function updatePageTitle(section) {
+    const titles = {
+        'dashboard': 'Tableau de bord',
+        'products': 'Gestion des Produits',
+        'orders': 'Gestion des Commandes',
+        'users': 'Gestion des Utilisateurs',
+        'custom-orders': 'Commandes sur mesure',
+        'messages': 'Messages de contact',
+        'settings': 'Paramètres'
+    };
+    
+    document.getElementById('pageTitle').textContent = titles[section] || 'Administration';
 }
 
 function loadSectionData(section) {
     switch(section) {
         case 'dashboard':
-            loadDashboardStats();
-            loadRecentOrders();
+            loadDashboard();
             break;
         case 'products':
-            loadAllProducts();
+            loadProducts();
             break;
         case 'orders':
-            loadAllOrders();
+            loadOrders();
             break;
         case 'users':
-            loadAllUsers();
+            loadUsers();
             break;
         case 'custom-orders':
             loadCustomOrders();
@@ -101,100 +114,96 @@ function loadSectionData(section) {
     }
 }
 
-// ==============================================
-// DASHBOARD STATS
-// ==============================================
-function loadDashboardStats() {
-    fetch(`php/api/admin.php?action=getDashboardStats&token=${window.authToken}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                document.getElementById('totalProducts').textContent = data.stats.products;
-                document.getElementById('totalOrders').textContent = data.stats.orders;
-                document.getElementById('totalUsers').textContent = data.stats.users;
-                document.getElementById('totalRevenue').textContent = data.stats.revenue + ' FCFA';
-            }
-        })
-        .catch(error => {
-            console.error('Erreur stats:', error);
-        });
-}
-
-function loadRecentOrders() {
-    fetch(`php/api/admin.php?action=getRecentOrders&token=${window.authToken}&limit=5`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                displayRecentOrders(data.orders);
-            }
-        })
-        .catch(error => {
-            console.error('Erreur commandes récentes:', error);
-        });
-}
-
-function displayRecentOrders(orders) {
-    const tbody = document.querySelector('#recentOrdersTable tbody');
-    
-    if (!orders || orders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="no-data">Aucune commande</td></tr>';
-        return;
+// ========================================
+// DASHBOARD
+// ========================================
+async function loadDashboard() {
+    try {
+        // Charger les statistiques
+        const response = await fetch(`${API_BASE}admin.php?action=getDashboardStats&token=${window.authToken}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            document.getElementById('totalProducts').textContent = data.stats.products;
+            document.getElementById('totalOrders').textContent = data.stats.orders;
+            document.getElementById('totalUsers').textContent = data.stats.users;
+            document.getElementById('totalRevenue').textContent = data.stats.revenue + ' FCFA';
+        }
+        
+        // Charger les commandes récentes
+        loadRecentOrders();
+        
+    } catch (error) {
+        console.error('Erreur chargement dashboard:', error);
+        showNotification('Erreur de chargement', 'error');
     }
-    
-    tbody.innerHTML = orders.map(order => `
-        <tr>
-            <td>${order.order_number}</td>
-            <td>${order.customer_name || 'N/A'}</td>
-            <td>${formatPrice(order.total_amount)}</td>
-            <td><span class="status-badge status-${order.status}">${getStatusText(order.status)}</span></td>
-            <td>${formatDate(order.created_at)}</td>
-            <td>
-                <div class="action-btns">
-                    <button class="btn-view" onclick="viewOrderDetails(${order.id})">Voir</button>
-                </div>
-            </td>
-        </tr>
-    `).join('');
 }
 
-// ==============================================
+async function loadRecentOrders() {
+    try {
+        const response = await fetch(`${API_BASE}admin.php?action=getRecentOrders&token=${window.authToken}&limit=10`);
+        const data = await response.json();
+        
+        const tbody = document.querySelector('#recentOrdersTable tbody');
+        
+        if (data.success && data.orders.length > 0) {
+            tbody.innerHTML = data.orders.map(order => `
+                <tr>
+                    <td>#${order.order_number || order.id}</td>
+                    <td>${order.customer_name || 'N/A'}</td>
+                    <td>${formatPrice(order.total_amount)}</td>
+                    <td><span class="status-badge status-${order.status}">${getStatusLabel(order.status)}</span></td>
+                    <td>${formatDate(order.created_at)}</td>
+                    <td>
+                        <div class="action-btns">
+                            <button class="btn-view" onclick="viewOrder(${order.id})">Voir</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr><td colspan="6" class="no-data">Aucune commande</td></tr>';
+        }
+        
+    } catch (error) {
+        console.error('Erreur chargement commandes récentes:', error);
+    }
+}
+
+// ========================================
 // PRODUITS
-// ==============================================
-function loadAllProducts() {
-    console.log('Loading products...');
-    
-    fetch(`php/api/products.php?action=getAll`)
-        .then(response => response.json())
-        .then(data => {
-            console.log('Products response:', data);
-            if (data.success) {
-                allProducts = data.products;
-                displayProducts(allProducts);
-            } else {
-                console.error('Error loading products:', data.message);
-                showNotification('Erreur lors du chargement des produits', 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Erreur produits:', error);
-            showNotification('Erreur de connexion', 'error');
-        });
+// ========================================
+async function loadProducts() {
+    try {
+        const response = await fetch(`${API_BASE}products.php?action=getAll&token=${window.authToken}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            allProducts = data.products;
+            displayProducts(allProducts);
+        }
+        
+    } catch (error) {
+        console.error('Erreur chargement produits:', error);
+        showNotification('Erreur de chargement des produits', 'error');
+    }
 }
 
 function displayProducts(products) {
     const tbody = document.querySelector('#productsTable tbody');
     
-    if (!products || products.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="no-data">Aucun produit</td></tr>';
+    if (products.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="no-data">Aucun produit trouvé</td></tr>';
         return;
     }
     
     tbody.innerHTML = products.map(product => `
         <tr>
             <td>
-                ${product.image_url ? 
-                    `<img src="${product.image_url}" alt="${product.name}" class="product-img">` : 
-                    '<div class="product-img" style="background:#ddd;"></div>'}
+                <img src="${product.image_url || 'images/placeholder.jpg'}" 
+                     alt="${product.name}" 
+                     class="product-img"
+                     onerror="this.src='images/placeholder.jpg'">
             </td>
             <td>${product.name}</td>
             <td>${product.category}</td>
@@ -210,161 +219,75 @@ function displayProducts(products) {
     `).join('');
 }
 
-// ==============================================
+// ========================================
 // COMMANDES
-// ==============================================
-function loadAllOrders() {
-    fetch(`php/api/admin.php?action=getAllOrders&token=${window.authToken}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                allOrders = data.orders;
-                displayOrders(allOrders);
-            }
-        })
-        .catch(error => {
-            console.error('Erreur commandes:', error);
-        });
+// ========================================
+async function loadOrders() {
+    try {
+        const response = await fetch(`${API_BASE}admin.php?action=getAllOrders&token=${window.authToken}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            allOrders = data.orders;
+            displayOrders(allOrders);
+        }
+        
+    } catch (error) {
+        console.error('Erreur chargement commandes:', error);
+        showNotification('Erreur de chargement des commandes', 'error');
+    }
 }
 
 function displayOrders(orders) {
     const tbody = document.querySelector('#ordersTable tbody');
     
-    if (!orders || orders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="no-data">Aucune commande</td></tr>';
+    if (orders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="no-data">Aucune commande trouvée</td></tr>';
         return;
     }
     
     tbody.innerHTML = orders.map(order => `
         <tr>
-            <td>${order.order_number}</td>
+            <td>#${order.order_number || order.id}</td>
             <td>${order.customer_name || 'N/A'}</td>
-            <td>${order.items_count || 0}</td>
+            <td>${order.items_count || 0} article(s)</td>
             <td>${formatPrice(order.total_amount)}</td>
-            <td>
-                <select class="status-select" onchange="updateOrderStatus(${order.id}, this.value)">
-                    <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>En attente</option>
-                    <option value="processing" ${order.status === 'processing' ? 'selected' : ''}>En cours</option>
-                    <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>Terminée</option>
-                    <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Annulée</option>
-                </select>
-            </td>
+            <td><span class="status-badge status-${order.status}">${getStatusLabel(order.status)}</span></td>
             <td>${formatDate(order.created_at)}</td>
             <td>
                 <div class="action-btns">
-                    <button class="btn-view" onclick="viewOrderDetails(${order.id})">Détails</button>
+                    <button class="btn-view" onclick="viewOrder(${order.id})">Détails</button>
+                    <button class="btn-edit" onclick="changeOrderStatus(${order.id})">Statut</button>
                 </div>
             </td>
         </tr>
     `).join('');
 }
 
-function updateOrderStatus(orderId, newStatus) {
-    fetch('php/api/admin.php?action=updateOrderStatus', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            token: window.authToken,
-            order_id: orderId,
-            status: newStatus
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification('Statut mis à jour', 'success');
-        } else {
-            showNotification('Erreur lors de la mise à jour', 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Erreur:', error);
-        showNotification('Erreur de connexion', 'error');
-    });
-}
-
-function viewOrderDetails(orderId) {
-    fetch(`php/api/admin.php?action=getOrderDetails&token=${window.authToken}&order_id=${orderId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showOrderDetailsModal(data.order);
-            }
-        })
-        .catch(error => {
-            console.error('Erreur détails commande:', error);
-        });
-}
-
-function showOrderDetailsModal(order) {
-    const modal = document.createElement('div');
-    modal.className = 'modal active';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Détails de la commande ${order.order_number}</h2>
-                <button class="close-btn" onclick="this.closest('.modal').remove()">✕</button>
-            </div>
-            <div style="padding: 30px;">
-                <h3>Informations client</h3>
-                <p><strong>Nom:</strong> ${order.first_name} ${order.last_name}</p>
-                <p><strong>Email:</strong> ${order.email}</p>
-                <p><strong>Téléphone:</strong> ${order.phone}</p>
-                <p><strong>Adresse:</strong> ${order.delivery_address || 'N/A'}</p>
-                
-                <h3 style="margin-top: 20px;">Articles commandés</h3>
-                <table style="width: 100%; margin-top: 10px;">
-                    <thead>
-                        <tr>
-                            <th>Produit</th>
-                            <th>Quantité</th>
-                            <th>Prix unitaire</th>
-                            <th>Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${order.items.map(item => `
-                            <tr>
-                                <td>${item.product_name}</td>
-                                <td>${item.quantity}</td>
-                                <td>${formatPrice(item.price)}</td>
-                                <td>${formatPrice(item.price * item.quantity)}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-                
-                <p style="margin-top: 20px; font-size: 18px;"><strong>Total: ${formatPrice(order.total_amount)}</strong></p>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-}
-
-// ==============================================
+// ========================================
 // UTILISATEURS
-// ==============================================
-function loadAllUsers() {
-    fetch(`php/api/admin.php?action=getAllUsers&token=${window.authToken}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                allUsers = data.users;
-                displayUsers(allUsers);
-            }
-        })
-        .catch(error => {
-            console.error('Erreur utilisateurs:', error);
-        });
+// ========================================
+async function loadUsers() {
+    try {
+        const response = await fetch(`${API_BASE}admin.php?action=getAllUsers&token=${window.authToken}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            allUsers = data.users;
+            displayUsers(allUsers);
+        }
+        
+    } catch (error) {
+        console.error('Erreur chargement utilisateurs:', error);
+        showNotification('Erreur de chargement des utilisateurs', 'error');
+    }
 }
 
 function displayUsers(users) {
     const tbody = document.querySelector('#usersTable tbody');
     
-    if (!users || users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="no-data">Aucun utilisateur</td></tr>';
+    if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="no-data">Aucun utilisateur trouvé</td></tr>';
         return;
     }
     
@@ -375,7 +298,7 @@ function displayUsers(users) {
             <td>${user.email}</td>
             <td>${user.phone || 'N/A'}</td>
             <td>${formatDate(user.created_at)}</td>
-            <td>${user.is_admin == 1 ? '✓' : '✗'}</td>
+            <td>${user.is_admin == 1 ? '✓' : '-'}</td>
             <td>
                 <div class="action-btns">
                     <button class="btn-view" onclick="viewUser(${user.id})">Voir</button>
@@ -385,207 +308,125 @@ function displayUsers(users) {
     `).join('');
 }
 
-// ==============================================
+// ========================================
 // COMMANDES SUR MESURE
-// ==============================================
-function loadCustomOrders() {
-    fetch(`php/api/custom-orders.php?action=getAllCustomOrders&token=${window.authToken}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                allCustomOrders = data.orders;
-                displayCustomOrders(allCustomOrders);
-            }
-        })
-        .catch(error => {
-            console.error('Erreur commandes sur mesure:', error);
-        });
+// ========================================
+async function loadCustomOrders() {
+    try {
+        const response = await fetch(`${API_BASE}custom-orders.php?action=getAllCustomOrders&token=${window.authToken}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            allCustomOrders = data.orders;
+            displayCustomOrders(allCustomOrders);
+        }
+        
+    } catch (error) {
+        console.error('Erreur chargement commandes sur mesure:', error);
+        showNotification('Erreur de chargement', 'error');
+    }
 }
 
 function displayCustomOrders(orders) {
     const tbody = document.querySelector('#customOrdersTable tbody');
     
-    if (!orders || orders.length === 0) {
+    if (orders.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="no-data">Aucune commande sur mesure</td></tr>';
         return;
     }
     
     tbody.innerHTML = orders.map(order => `
         <tr>
-            <td>${order.order_number}</td>
+            <td>#${order.order_number}</td>
             <td>${order.full_name}</td>
             <td>${order.garment_type}</td>
             <td>${order.category}</td>
             <td>${formatPrice(order.budget)}</td>
-            <td>
-                <select class="status-select" onchange="updateCustomOrderStatus(${order.id}, this.value)">
-                    <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>En attente</option>
-                    <option value="in_progress" ${order.status === 'in_progress' ? 'selected' : ''}>En cours</option>
-                    <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>Terminée</option>
-                    <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Annulée</option>
-                </select>
-            </td>
+            <td><span class="status-badge status-${order.status}">${getStatusLabel(order.status)}</span></td>
             <td>${formatDate(order.created_at)}</td>
             <td>
                 <div class="action-btns">
                     <button class="btn-view" onclick="viewCustomOrder(${order.id})">Détails</button>
+                    <button class="btn-edit" onclick="changeCustomOrderStatus(${order.id})">Statut</button>
                 </div>
             </td>
         </tr>
     `).join('');
 }
 
-function updateCustomOrderStatus(orderId, newStatus) {
-    fetch('php/api/custom-orders.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            action: 'updateOrderStatus',
-            token: window.authToken,
-            order_id: orderId,
-            status: newStatus
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification('Statut mis à jour', 'success');
-        } else {
-            showNotification('Erreur lors de la mise à jour', 'error');
-        }
-    });
-}
-
-function viewCustomOrder(orderId) {
-    const order = allCustomOrders.find(o => o.id == orderId);
-    if (!order) return;
-    
-    const modal = document.createElement('div');
-    modal.className = 'modal active';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Commande ${order.order_number}</h2>
-                <button class="close-btn" onclick="this.closest('.modal').remove()">✕</button>
-            </div>
-            <div style="padding: 30px;">
-                <h3>Informations client</h3>
-                <p><strong>Nom:</strong> ${order.full_name}</p>
-                <p><strong>Email:</strong> ${order.email}</p>
-                <p><strong>Téléphone:</strong> ${order.phone}</p>
-                
-                <h3 style="margin-top: 20px;">Détails de la commande</h3>
-                <p><strong>Type:</strong> ${order.garment_type}</p>
-                <p><strong>Catégorie:</strong> ${order.category}</p>
-                <p><strong>Occasion:</strong> ${order.occasion || 'N/A'}</p>
-                <p><strong>Budget:</strong> ${formatPrice(order.budget)}</p>
-                <p><strong>A des mesures:</strong> ${order.has_measurements === 'yes' ? 'Oui' : 'Non'}</p>
-                <p><strong>Date limite:</strong> ${order.deadline ? formatDate(order.deadline) : 'N/A'}</p>
-                
-                <h3 style="margin-top: 20px;">Description</h3>
-                <p>${order.description}</p>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-}
-
-// ==============================================
+// ========================================
 // MESSAGES
-// ==============================================
-function loadMessages() {
+// ========================================
+async function loadMessages() {
     const tbody = document.querySelector('#messagesTable tbody');
-    tbody.innerHTML = '<tr><td colspan="6" class="no-data">Fonctionnalité à venir</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="no-data">Fonctionnalité en développement</td></tr>';
 }
 
-// ==============================================
-// GESTION PRODUITS (MODAL)
-// ==============================================
-function setupEventListeners() {
-    // Recherche produits
-    const productSearch = document.getElementById('productSearch');
-    if (productSearch) {
-        productSearch.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase();
-            const filtered = allProducts.filter(p => 
-                p.name.toLowerCase().includes(searchTerm)
-            );
-            displayProducts(filtered);
-        });
-    }
-    
-    // Filtre catégorie
-    const categoryFilter = document.getElementById('categoryFilter');
-    if (categoryFilter) {
-        categoryFilter.addEventListener('change', function() {
-            if (this.value === 'all') {
-                displayProducts(allProducts);
-            } else {
-                const filtered = allProducts.filter(p => p.category === this.value);
-                displayProducts(filtered);
-            }
-        });
-    }
-    
+// ========================================
+// MODAL PRODUIT
+// ========================================
+function initModalEvents() {
     // Preview image
-    const productImage = document.getElementById('productImage');
-    if (productImage) {
-        productImage.addEventListener('change', function() {
-            const preview = document.getElementById('imagePreview');
-            const file = this.files[0];
-            
+    const imageInput = document.getElementById('productImage');
+    if (imageInput) {
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                    document.getElementById('imagePreview').innerHTML = 
+                        `<img src="${e.target.result}" alt="Preview">`;
                 };
                 reader.readAsDataURL(file);
             }
         });
     }
     
-    // Form submission
+    // Submit formulaire produit
     const productForm = document.getElementById('productForm');
     if (productForm) {
         productForm.addEventListener('submit', handleProductSubmit);
     }
 }
 
-function openProductModal() {
-    document.getElementById('productModal').classList.add('active');
-    document.getElementById('modalTitle').textContent = 'Ajouter un produit';
-    document.getElementById('productForm').reset();
-    document.getElementById('productId').value = '';
-    document.getElementById('imagePreview').innerHTML = '';
+function openProductModal(productId = null) {
+    const modal = document.getElementById('productModal');
+    const form = document.getElementById('productForm');
+    
+    if (productId) {
+        // Mode édition
+        const product = allProducts.find(p => p.id === productId);
+        if (product) {
+            document.getElementById('modalTitle').textContent = 'Modifier le produit';
+            document.getElementById('productId').value = product.id;
+            document.getElementById('productName').value = product.name;
+            document.getElementById('productCategory').value = product.category;
+            document.getElementById('productPrice').value = product.price;
+            document.getElementById('productStock').value = product.stock;
+            document.getElementById('productDescription').value = product.description || '';
+            document.getElementById('isCustom').checked = product.is_custom == 1;
+            
+            if (product.image_url) {
+                document.getElementById('imagePreview').innerHTML = 
+                    `<img src="${product.image_url}" alt="Preview">`;
+            }
+        }
+    } else {
+        // Mode création
+        document.getElementById('modalTitle').textContent = 'Ajouter un produit';
+        form.reset();
+        document.getElementById('imagePreview').innerHTML = '';
+    }
+    
+    modal.classList.add('active');
 }
 
 function closeProductModal() {
-    document.getElementById('productModal').classList.remove('active');
+    const modal = document.getElementById('productModal');
+    modal.classList.remove('active');
 }
 
-function editProduct(productId) {
-    const product = allProducts.find(p => p.id == productId);
-    if (!product) return;
-    
-    document.getElementById('productModal').classList.add('active');
-    document.getElementById('modalTitle').textContent = 'Modifier le produit';
-    document.getElementById('productId').value = product.id;
-    document.getElementById('productName').value = product.name;
-    document.getElementById('productCategory').value = product.category;
-    document.getElementById('productPrice').value = product.price;
-    document.getElementById('productStock').value = product.stock;
-    document.getElementById('productDescription').value = product.description || '';
-    document.getElementById('isCustom').checked = product.is_custom == 1;
-    
-    if (product.image_url) {
-        document.getElementById('imagePreview').innerHTML = 
-            `<img src="${product.image_url}" alt="${product.name}">`;
-    }
-}
-
-function handleProductSubmit(e) {
+async function handleProductSubmit(e) {
     e.preventDefault();
     
     const formData = new FormData();
@@ -603,65 +444,107 @@ function handleProductSubmit(e) {
         formData.append('image', imageFile);
     }
     
-    fetch('php/api/products.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
+    try {
+        const response = await fetch(`${API_BASE}products.php`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
         if (data.success) {
             showNotification('Produit enregistré avec succès', 'success');
             closeProductModal();
-            loadAllProducts();
+            loadProducts();
         } else {
-            showNotification(data.message || 'Erreur lors de l\'enregistrement', 'error');
+            showNotification(data.message || 'Erreur', 'error');
         }
-    })
-    .catch(error => {
+        
+    } catch (error) {
         console.error('Erreur:', error);
-        showNotification('Erreur de connexion', 'error');
-    });
+        showNotification('Erreur lors de l\'enregistrement', 'error');
+    }
 }
 
-function deleteProduct(productId) {
+async function deleteProduct(productId) {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) {
         return;
     }
     
-    fetch('php/api/products.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            action: 'delete',
-            token: window.authToken,
-            id: productId
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
+    try {
+        const response = await fetch(`${API_BASE}products.php`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'delete',
+                token: window.authToken,
+                id: productId
+            })
+        });
+        
+        const data = await response.json();
+        
         if (data.success) {
             showNotification('Produit supprimé', 'success');
-            loadAllProducts();
+            loadProducts();
         } else {
-            showNotification('Erreur lors de la suppression', 'error');
+            showNotification(data.message || 'Erreur', 'error');
         }
-    })
-    .catch(error => {
+        
+    } catch (error) {
         console.error('Erreur:', error);
-        showNotification('Erreur de connexion', 'error');
-    });
+        showNotification('Erreur lors de la suppression', 'error');
+    }
 }
 
-// ==============================================
+function editProduct(productId) {
+    openProductModal(productId);
+}
+
+// ========================================
+// FILTRES
+// ========================================
+function initFilterEvents() {
+    // Filtre produits
+    const productSearch = document.getElementById('productSearch');
+    const categoryFilter = document.getElementById('categoryFilter');
+    
+    if (productSearch) {
+        productSearch.addEventListener('input', filterProducts);
+    }
+    
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', filterProducts);
+    }
+}
+
+function filterProducts() {
+    const searchTerm = document.getElementById('productSearch').value.toLowerCase();
+    const category = document.getElementById('categoryFilter').value;
+    
+    let filtered = allProducts;
+    
+    if (searchTerm) {
+        filtered = filtered.filter(p => 
+            p.name.toLowerCase().includes(searchTerm) ||
+            p.description.toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    if (category !== 'all') {
+        filtered = filtered.filter(p => p.category === category);
+    }
+    
+    displayProducts(filtered);
+}
+
+// ========================================
 // UTILITAIRES
-// ==============================================
+// ========================================
 function formatPrice(price) {
-    return new Intl.NumberFormat('fr-FR', {
-        style: 'decimal',
-        minimumFractionDigits: 0
-    }).format(price) + ' FCFA';
+    return new Intl.NumberFormat('fr-FR').format(price) + ' FCFA';
 }
 
 function formatDate(dateString) {
@@ -669,77 +552,111 @@ function formatDate(dateString) {
     return date.toLocaleDateString('fr-FR', {
         year: 'numeric',
         month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        day: 'numeric'
     });
 }
 
-function getStatusText(status) {
-    const statuses = {
+function getStatusLabel(status) {
+    const labels = {
         'pending': 'En attente',
         'processing': 'En cours',
         'completed': 'Terminée',
         'cancelled': 'Annulée',
-        'in_progress': 'En cours'
+        'confirmed': 'Confirmée'
     };
-    return statuses[status] || status;
+    return labels[status] || status;
 }
 
 function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 15px 25px;
-        background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3'};
-        color: white;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        z-index: 10000;
-        animation: slideIn 0.3s ease;
-    `;
-    notification.textContent = message;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
+    alert(message);
 }
 
-// Ajouter les animations CSS
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from {
-            transform: translateX(400px);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
+function viewOrder(orderId) {
+    alert('Détails de la commande #' + orderId);
+}
+
+function changeOrderStatus(orderId) {
+    const newStatus = prompt('Nouveau statut (pending/processing/completed/cancelled):');
+    if (newStatus) {
+        updateOrderStatus(orderId, newStatus);
     }
-    
-    @keyframes slideOut {
-        from {
-            transform: translateX(0);
-            opacity: 1;
+}
+
+async function updateOrderStatus(orderId, status) {
+    try {
+        const response = await fetch(`${API_BASE}admin.php`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'updateOrderStatus',
+                token: window.authToken,
+                order_id: orderId,
+                status: status
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Statut mis à jour', 'success');
+            loadOrders();
+        } else {
+            showNotification(data.message || 'Erreur', 'error');
         }
-        to {
-            transform: translateX(400px);
-            opacity: 0;
+        
+    } catch (error) {
+        console.error('Erreur:', error);
+        showNotification('Erreur', 'error');
+    }
+}
+
+function viewUser(userId) {
+    alert('Détails de l\'utilisateur #' + userId);
+}
+
+function viewCustomOrder(orderId) {
+    alert('Détails de la commande sur mesure #' + orderId);
+}
+
+function changeCustomOrderStatus(orderId) {
+    const newStatus = prompt('Nouveau statut (pending/processing/completed/cancelled):');
+    if (newStatus) {
+        updateCustomOrderStatus(orderId, newStatus);
+    }
+}
+
+async function updateCustomOrderStatus(orderId, status) {
+    try {
+        const response = await fetch(`${API_BASE}custom-orders.php`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'updateOrderStatus',
+                token: window.authToken,
+                order_id: orderId,
+                status: status
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Statut mis à jour', 'success');
+            loadCustomOrders();
+        } else {
+            showNotification(data.message || 'Erreur', 'error');
         }
+        
+    } catch (error) {
+        console.error('Erreur:', error);
+        showNotification('Erreur', 'error');
     }
-    
-    .status-select {
-        padding: 5px 10px;
-        border: 2px solid #e0e0e0;
-        border-radius: 6px;
-        font-size: 13px;
-    }
-`;
-document.head.appendChild(style);
+}
+
+
+
+
