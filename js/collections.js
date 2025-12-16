@@ -110,30 +110,40 @@ function loadProducts() {
 function displayProducts(products) {
     const grid = document.getElementById('productsGrid');
     
-    if (products.length === 0) {
+    if (!products || products.length === 0) {
         grid.innerHTML = '<div class="no-products">Aucun produit trouvé dans cette catégorie</div>';
         return;
     }
     
-    grid.innerHTML = products.map(product => `
-        <div class="product-card" data-category="${product.category.toLowerCase()}">
+    try {
+        grid.innerHTML = products.map(product => {
+            const cat = (product.category || '').toLowerCase();
+            const catName = getCategoryName(product.category || '');
+            const price = isNaN(parseFloat(product.price)) ? 0 : parseFloat(product.price);
+            return `
+        <div class="product-card" data-category="${cat}">
             <img src="${resolveImageUrl(product.image_url, 'https://via.placeholder.com/300x400/d97642/ffffff?text=MH+Couture')}" 
                  alt="${product.name}" 
                  class="product-image"
                  onerror="this.src='https://via.placeholder.com/300x400/d97642/ffffff?text=MH+Couture'">
             <div class="product-info">
-                <div class="product-category">${getCategoryName(product.category)}</div>
+                <div class="product-category">${catName}</div>
                 <h3 class="product-name">${product.name}</h3>
                 <p class="product-description">${product.description || ''}</p>
                 <div class="product-footer">
-                    <span class="product-price">${parseInt(product.price).toLocaleString('fr-FR')} FCFA</span>
+                    <span class="product-price">${parseInt(price).toLocaleString('fr-FR')} FCFA</span>
                     <button class="add-to-cart-btn" onclick="addToCart(${product.id})">
                         Ajouter au panier
                     </button>
                 </div>
             </div>
         </div>
-    `).join('');
+            `;
+        }).join('');
+    } catch (e) {
+        console.error('Erreur affichage collections:', e, products);
+        grid.innerHTML = '<div class="no-products">Erreur d\'affichage</div>';
+    }
 }
 
 // Obtenir le nom de catégorie en français

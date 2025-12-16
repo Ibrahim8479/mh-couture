@@ -180,13 +180,18 @@ function displayProducts(products) {
         return;
     }
     
-    tbody.innerHTML = products.map(product => `
+    try {
+        tbody.innerHTML = products.map(product => {
+            const cat = (product.category || '').toLowerCase();
+            const catName = getCategoryName(product.category || '');
+            const price = isNaN(parseFloat(product.price)) ? '0' : parseFloat(product.price);
+            return `
         <tr>
             <td><img src="${resolveImageUrl(product.image_url, 'https://via.placeholder.com/50')}" alt="${product.name}" onerror="this.src='https://via.placeholder.com/50'" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;"></td>
             <td><strong>${product.name}</strong></td>
-            <td>${getCategoryName(product.category)}</td>
-            <td>${parseInt(product.price).toLocaleString('fr-FR')} FCFA</td>
-            <td>${product.stock}</td>
+            <td>${catName}</td>
+            <td>${parseInt(price).toLocaleString('fr-FR')} FCFA</td>
+            <td>${product.stock || 0}</td>
             <td>
                 <div class="action-btns" style="display: flex; gap: 8px;">
                     <button class="btn-edit" onclick="editProduct(${product.id})">Modifier</button>
@@ -194,7 +199,12 @@ function displayProducts(products) {
                 </div>
             </td>
         </tr>
-    `).join('');
+            `;
+        }).join('');
+    } catch (e) {
+        console.error('Erreur affichage produits:', e, products);
+        tbody.innerHTML = '<tr><td colspan="6" class="no-data">Erreur d\'affichage</td></tr>';
+    }
 }
 
 // CHARGER COMMANDES
