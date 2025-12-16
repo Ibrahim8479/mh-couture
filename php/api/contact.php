@@ -1,54 +1,5 @@
 <?php
 /**
- * API Gestion des Messages de Contact - MH Couture (version corrigée)
- */
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../includes/functions.php';
-setJSONHeaders();
-
-switch ($action) {
-    case 'send':
-        $name = sanitizeInput($input['name'] ?? '');
-        $email = sanitizeInput($input['email'] ?? '');
-        $message = sanitizeInput($input['message'] ?? '');
-        if (!$name || !$email || !$message) {
-            sendJSONResponse(['success' => false, 'message' => 'Tous les champs sont obligatoires'], 400);
-        }
-        if (!validateEmail($email)) {
-            sendJSONResponse(['success' => false, 'message' => 'Email invalide'], 400);
-        }
-        try {
-            $conn = getDBConnection();
-            $stmt = $conn->prepare("INSERT INTO contact_messages (name, email, message, created_at) VALUES (?, ?, ?, NOW())");
-            $stmt->execute([$name, $email, $message]);
-            sendEmail(ADMIN_EMAIL, 'Nouveau message de contact', "De: $name <$email>\n\n$message");
-            sendJSONResponse(['success' => true, 'message' => 'Message envoyé avec succès']);
-        } catch (Exception $e) {
-            logError('send contact: ' . $e->getMessage());
-            sendJSONResponse(['success' => false, 'message' => 'Erreur lors de l\'envoi'], 500);
-        }
-        break;
-    case 'getAllMessages':
-        $token = $_GET['token'] ?? '';
-        if (!isAdmin($token)) {
-            sendJSONResponse(['success' => false, 'message' => 'Accès refusé'], 403);
-        }
-        try {
-            $conn = getDBConnection();
-            $stmt = $conn->prepare("SELECT id, name, email, message, created_at FROM contact_messages ORDER BY created_at DESC");
-            $stmt->execute();
-            $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            sendJSONResponse(['success' => true, 'messages' => $messages]);
-        } catch (Exception $e) {
-            logError('getAllMessages: ' . $e->getMessage());
-            sendJSONResponse(['success' => false, 'message' => 'Erreur chargement messages'], 500);
-        }
-        break;
-    default:
-        sendJSONResponse(['success' => false, 'message' => 'Action non reconnue'], 400);
-}
-<?php
-/**
  * API Gestion des Messages de Contact - MH Couture
  * Fichier: php/api/contact.php
  */

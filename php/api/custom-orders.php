@@ -1,41 +1,8 @@
 <?php
-<?php
 /**
- * API Gestion des Commandes Sur Mesure - MH Couture (version corrigée)
+ * API Gestion des Commandes Sur Mesure - MH Couture
+ * Fichier: php/api/custom-orders.php
  */
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../includes/functions.php';
-setJSONHeaders();
-$action = $_GET['action'] ?? $_POST['action'] ?? '';
-
-switch ($action) {
-    case 'create':
-        $input = $_POST;
-        $token = $input['token'] ?? '';
-        $user = getUserIdFromToken($token);
-        if (!$user) {
-            sendJSONResponse(['success' => false, 'message' => 'Non authentifié'], 401);
-        }
-        $description = sanitizeInput($input['description'] ?? '');
-        $budget = floatval($input['budget'] ?? 0);
-        $deadline = sanitizeInput($input['deadline'] ?? '');
-        if (!$description || !$budget) {
-            sendJSONResponse(['success' => false, 'message' => 'Champs obligatoires manquants'], 400);
-        }
-        try {
-            $conn = getDBConnection();
-            $stmt = $conn->prepare("INSERT INTO custom_orders (user_id, description, budget, deadline, created_at) VALUES (?, ?, ?, ?, NOW())");
-            $stmt->execute([$user['id'], $description, $budget, $deadline]);
-            sendJSONResponse(['success' => true]);
-        } catch (Exception $e) {
-            logError('create custom order: ' . $e->getMessage());
-            sendJSONResponse(['success' => false, 'message' => 'Erreur création commande sur mesure'], 500);
-        }
-        break;
-    // ... Ajoutez ici les autres actions CRUD (getAll, getById, update, delete, etc.)
-    default:
-        sendJSONResponse(['success' => false, 'message' => 'Action non reconnue'], 400);
-}
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/functions.php';

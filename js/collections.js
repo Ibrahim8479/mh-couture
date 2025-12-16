@@ -4,14 +4,6 @@ let allProducts = [];
 let currentCategory = 'all';
 let currentSort = 'newest';
 
-// Resolve image URL: prefer absolute URLs, otherwise make it root-relative, fallback to placeholder
-function resolveImageUrl(url, fallback = 'https://via.placeholder.com/300x400/d97642/ffffff?text=MH+Couture') {
-    if (!url) return fallback;
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    if (url.startsWith('/')) return url;
-    return '/' + url;
-} 
-
 // Produits de démonstration
 const demoProducts = [
     {
@@ -110,40 +102,30 @@ function loadProducts() {
 function displayProducts(products) {
     const grid = document.getElementById('productsGrid');
     
-    if (!products || products.length === 0) {
+    if (products.length === 0) {
         grid.innerHTML = '<div class="no-products">Aucun produit trouvé dans cette catégorie</div>';
         return;
     }
     
-    try {
-        grid.innerHTML = products.map(product => {
-            const cat = (product.category || '').toLowerCase();
-            const catName = getCategoryName(product.category || '');
-            const price = isNaN(parseFloat(product.price)) ? 0 : parseFloat(product.price);
-            return `
-        <div class="product-card" data-category="${cat}">
-            <img src="${resolveImageUrl(product.image_url, 'https://via.placeholder.com/300x400/d97642/ffffff?text=MH+Couture')}" 
+    grid.innerHTML = products.map(product => `
+        <div class="product-card" data-category="${product.category.toLowerCase()}">
+            <img src="${product.image_url || 'https://via.placeholder.com/300x400/d97642/ffffff?text=MH+Couture'}" 
                  alt="${product.name}" 
                  class="product-image"
                  onerror="this.src='https://via.placeholder.com/300x400/d97642/ffffff?text=MH+Couture'">
             <div class="product-info">
-                <div class="product-category">${catName}</div>
+                <div class="product-category">${getCategoryName(product.category)}</div>
                 <h3 class="product-name">${product.name}</h3>
                 <p class="product-description">${product.description || ''}</p>
                 <div class="product-footer">
-                    <span class="product-price">${parseInt(price).toLocaleString('fr-FR')} FCFA</span>
+                    <span class="product-price">${parseInt(product.price).toLocaleString('fr-FR')} FCFA</span>
                     <button class="add-to-cart-btn" onclick="addToCart(${product.id})">
                         Ajouter au panier
                     </button>
                 </div>
             </div>
         </div>
-            `;
-        }).join('');
-    } catch (e) {
-        console.error('Erreur affichage collections:', e, products);
-        grid.innerHTML = '<div class="no-products">Erreur d\'affichage</div>';
-    }
+    `).join('');
 }
 
 // Obtenir le nom de catégorie en français

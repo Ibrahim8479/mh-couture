@@ -1,5 +1,5 @@
 // signup.js - Gestion de l'inscription - MH Couture
-// VERSION MODERNE ET CORRIGÉE
+// VERSION CORRIGÉE - Sécurité renforcée
 
 document.addEventListener('DOMContentLoaded', function() {
     // Vérifier si l'utilisateur est déjà connecté
