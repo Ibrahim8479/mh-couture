@@ -1,3 +1,67 @@
+// config.js - Configuration centrale MH Couture
+
+const CONFIG = {
+    BASE_URL: window.location.origin + '/',
+    API: {
+        AUTH: 'php/auth/auth.php',
+    PAGES: {
+        HOME: 'index.php',
+        LOGIN: 'login.php',
+    UPLOADS: 'uploads/',
+    PRODUCT_IMAGES: 'uploads/products/',
+    LOCALE: 'fr-NE',
+    CURRENCY: 'FCFA',
+    PHONE_PREFIX: '+227',
+    TIMEZONE: 'Africa/Niamey'
+};
+
+// Construit l'URL complète d'une API
+function getApiUrl(endpoint) {
+    return CONFIG.BASE_URL + endpoint;
+}
+// Récupère le token utilisateur
+function getAuthToken() {
+    return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+// Effectue une requête API (GET/POST/PUT)
+async function apiRequest(endpoint, method = 'GET', data = null) {
+    const url = getApiUrl(endpoint);
+    const options = {
+        method: method,
+        headers: {
+    if (token && data) {
+        data.token = token;
+    }
+    if (data && (method === 'POST' || method === 'PUT')) {
+        options.body = JSON.stringify(data);
+    }
+    try {
+        const response = await fetch(url, options);
+        const result = await response.json();
+        return result;
+    } catch (error) {
+        console.error('Erreur API:', error);
+        return {
+            success: false,
+            message: 'Erreur de connexion au serveur'
+        };
+    }
+}
+// Formate un prix en FCFA
+function formatPrice(price) {
+    return parseInt(price).toLocaleString('fr-FR') + ' FCFA';
+// Formate un numéro de téléphone Niger (+227...)
+function formatPhoneNiger(phone) {
+    let cleaned = phone.replace(/[^\d+]/g, '');
+    if (!cleaned.startsWith('+227')) {
+        cleaned = '+227' + cleaned.replace(/^\+/, '');
+    }
+    return cleaned;
+}
+
+// Export Node.js (pour tests éventuels)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { CONFIG, getApiUrl, getAuthToken, apiRequest, formatPrice, formatPhoneNiger };
+}
 // config.js - Configuration des chemins pour MH Couture
 
 // Configuration de base
