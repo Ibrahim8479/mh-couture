@@ -1,5 +1,5 @@
-// admin.js — VERSION CORRIGÉE ET STABLE
-// Compatible avec products.php (sans WHERE stock > 0)
+// admin.js – VERSION CORRIGÉE
+// Compatible avec products.php
 
 let currentSection = 'dashboard';
 let allProducts = [];
@@ -70,16 +70,22 @@ function loadDashboardData() {
             document.getElementById('totalUsers').textContent = data.stats.users || 0;
             document.getElementById('totalRevenue').textContent = (data.stats.revenue || 0) + ' FCFA';
         })
-        .catch(() => {});
+        .catch(err => console.error('Erreur dashboard:', err));
 }
 
 // ===============================
-// PRODUITS — CHARGEMENT
+// PRODUITS – CHARGEMENT
 // ===============================
 function loadProducts() {
+    console.log('Chargement des produits...');
+    
     fetch('php/api/products.php?action=getAll')
-        .then(r => r.json())
+        .then(r => {
+            console.log('Réponse reçue:', r.status);
+            return r.json();
+        })
         .then(data => {
+            console.log('Données:', data);
             if (data.success && Array.isArray(data.products)) {
                 allProducts = data.products;
                 displayProducts(allProducts);
@@ -87,11 +93,14 @@ function loadProducts() {
                 showProductsError(data.message || 'Impossible de charger');
             }
         })
-        .catch(() => showProductsError('Erreur de connexion'));
+        .catch(err => {
+            console.error('Erreur de chargement:', err);
+            showProductsError('Erreur de connexion');
+        });
 }
 
 // ===============================
-// PRODUITS — AFFICHAGE
+// PRODUITS – AFFICHAGE
 // ===============================
 function displayProducts(products) {
     const tbody = document.querySelector('#productsTable tbody');
@@ -103,13 +112,26 @@ function displayProducts(products) {
     }
 
     tbody.innerHTML = products.map(p => {
-        const img = p.image_url ? '/' + p.image_url : 'https://via.placeholder.com/50';
+        // Construction du chemin de l'image
+        let imgSrc = 'https://via.placeholder.com/50';
+        
+        if (p.image_url) {
+            // Si l'image_url commence par 'uploads/', ajouter un slash
+            if (p.image_url.startsWith('uploads/')) {
+                imgSrc = '/' + p.image_url;
+            } else if (!p.image_url.startsWith('http')) {
+                imgSrc = p.image_url;
+            } else {
+                imgSrc = p.image_url;
+            }
+        }
+        
         const price = Number(p.price || 0).toLocaleString('fr-FR');
         const category = getCategoryName(p.category);
 
         return `
         <tr>
-            <td><img src="${img}" class="product-img" alt="${p.name || ''}"></td>
+            <td><img src="${imgSrc}" class="product-img" alt="${p.name || ''}" onerror="this.src='https://via.placeholder.com/50'"></td>
             <td>${p.name || ''}</td>
             <td>${category}</td>
             <td>${price} FCFA</td>
@@ -152,6 +174,14 @@ function openProductModal(productId = null) {
             document.getElementById('productStock').value = product.stock || 0;
             document.getElementById('productDescription').value = product.description || '';
             document.getElementById('isCustom').checked = product.is_custom == 1;
+            
+            // Afficher l'image existante
+            if (product.image_url && preview) {
+                const imgSrc = product.image_url.startsWith('uploads/') 
+                    ? '/' + product.image_url 
+                    : product.image_url;
+                preview.innerHTML = `<img src="${imgSrc}" onerror="this.style.display='none'">`;
+            }
         }
     } else {
         document.getElementById('modalTitle').textContent = 'Ajouter un produit';
@@ -174,12 +204,30 @@ function setupProductModal() {
     const closeBtn = modal.querySelector('.close-btn');
     if (closeBtn) closeBtn.addEventListener('click', closeProductModal);
 
-    window.addEventListener('click', e => { if (e.target === modal) closeProductModal(); });
+    window.addEventListener('click', e => { 
+        if (e.target === modal) closeProductModal(); 
+    });
 
     if (imageInput) {
         imageInput.addEventListener('change', e => {
             const file = e.target.files[0];
             if (!file) return;
+            
+            // Vérifier la taille du fichier (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                showError('Image trop volumineuse (max 5MB)');
+                imageInput.value = '';
+                return;
+            }
+            
+            // Vérifier le type de fichier
+            const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            if (!validTypes.includes(file.type)) {
+                showError('Format d\'image non valide');
+                imageInput.value = '';
+                return;
+            }
+            
             const reader = new FileReader();
             reader.onload = ev => {
                 const preview = document.getElementById('imagePreview');
@@ -199,7 +247,10 @@ function handleProductSubmit(e) {
     e.preventDefault();
 
     const token = getAuthToken();
-    if (!token) return showError('Non authentifié');
+    if (!token) {
+        showError('Non authentifié');
+        return;
+    }
 
     const productId = document.getElementById('productId').value;
     const formData = new FormData();
@@ -218,39 +269,83 @@ function handleProductSubmit(e) {
     const imageFile = document.getElementById('productImage').files[0];
     if (imageFile) formData.append('image', imageFile);
 
-    fetch('php/api/products.php', { method: 'POST', body: formData })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                showSuccess(productId ? 'Produit modifié !' : 'Produit ajouté !');
-                closeProductModal();
-                loadProducts();
-            } else showError(data.message || 'Erreur');
-        })
-        .catch(() => showError('Erreur serveur'));
+    // Afficher un indicateur de chargement
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Enregistrement...';
+
+    fetch('php/api/products.php', { 
+        method: 'POST', 
+        body: formData 
+    })
+    .then(r => r.json())
+    .then(data => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+        
+        if (data.success) {
+            showSuccess(productId ? 'Produit modifié !' : 'Produit ajouté !');
+            closeProductModal();
+            loadProducts();
+        } else {
+            showError(data.message || 'Erreur lors de l\'enregistrement');
+        }
+    })
+    .catch(err => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+        console.error('Erreur:', err);
+        showError('Erreur de connexion');
+    });
 }
 
 // ===============================
 // ACTIONS
 // ===============================
-function editProduct(id) { openProductModal(id); }
+function editProduct(id) { 
+    openProductModal(id); 
+}
 
 function deleteProduct(id) {
-    if (!confirm('Supprimer ce produit ?')) return;
+    if (!confirm('Voulez-vous vraiment supprimer ce produit ?')) return;
 
-    fetch('php/api/products.php', {
+    const token = getAuthToken();
+    if (!token) {
+        showError('Non authentifié');
+        return;
+    }
+
+    // Log pour déboguer
+    console.log('Suppression du produit:', id);
+    console.log('Token:', token);
+
+    fetch('php/api/products.php?action=delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'delete', id, token: getAuthToken() })
+        body: JSON.stringify({ 
+            action: 'delete', 
+            id: id, 
+            token: token 
+        })
     })
-    .then(r => r.json())
+    .then(r => {
+        console.log('Réponse status:', r.status);
+        return r.json();
+    })
     .then(data => {
+        console.log('Réponse data:', data);
         if (data.success) {
             showSuccess('Produit supprimé');
             loadProducts();
-        } else showError(data.message || 'Erreur');
+        } else {
+            showError(data.message || 'Erreur lors de la suppression');
+        }
     })
-    .catch(() => showError('Erreur serveur'));
+    .catch(err => {
+        console.error('Erreur complète:', err);
+        showError('Erreur de connexion');
+    });
 }
 
 // ===============================
@@ -281,12 +376,16 @@ function filterProducts() {
 // ===============================
 function getCategoryName(category) {
     if (!category) return '—';
-    const map = { homme: 'Homme', femme: 'Femme', enfant: 'Enfant' };
+    const map = { 
+        homme: 'Homme', 
+        femme: 'Femme', 
+        enfant: 'Enfant' 
+    };
     return map[category.toLowerCase()] || category;
 }
 
 function getAuthToken() {
-    return getCookie('auth_token') || localStorage.getItem('authToken');
+    return getCookie('auth_token') || localStorage.getItem('authToken') || window.authToken;
 }
 
 function getCookie(name) {
@@ -297,7 +396,7 @@ function getCookie(name) {
 }
 
 function showSuccess(message) {
-    notify('✅ ' + message, '#27ae60');
+    notify('✅ ' + message, '#2ecc71');
 }
 
 function showError(message) {
@@ -306,8 +405,37 @@ function showError(message) {
 
 function notify(text, bg) {
     const n = document.createElement('div');
-    n.style.cssText = `position:fixed;top:20px;right:20px;background:${bg};color:#fff;padding:16px 24px;border-radius:8px;z-index:10000;font-weight:600`;
+    n.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${bg};
+        color: #fff;
+        padding: 16px 24px;
+        border-radius: 8px;
+        z-index: 10000;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        animation: slideIn 0.3s ease;
+    `;
     n.textContent = text;
     document.body.appendChild(n);
-    setTimeout(() => n.remove(), 3000);
+    setTimeout(() => {
+        n.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => n.remove(), 300);
+    }, 3000);
 }
+
+// Ajouter les animations CSS
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(400px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(400px); opacity: 0; }
+    }
+`;
+document.head.appendChild(style);
