@@ -53,6 +53,16 @@ function showSection(section) {
     
     if (sectionElement) {
         sectionElement.classList.add('active');
+        // ensure the section is visible (fix cases where content is off-screen on large viewports)
+        try {
+            // scroll the main content container to top and bring the active section into view
+            const main = document.querySelector('.main-content');
+            if (main) main.scrollTop = 0;
+            sectionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (e) {
+            console.warn('scrollIntoView failed:', e);
+        }
     }
     
     const titles = {
