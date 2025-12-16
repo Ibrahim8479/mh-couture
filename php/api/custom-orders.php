@@ -13,7 +13,7 @@ setJSONHeaders();
 $input = getJSONInput();
 $action = $input['action'] ?? '';
 
-// CRÉER UNE COMMANDE SUR MESURE
+// CRÉER UNE COMMANDE SUR MESUR
 if ($action === 'createCustomOrder') {
     $fullName = sanitizeInput($input['fullName'] ?? '');
     $email = sanitizeInput($input['email'] ?? '');
