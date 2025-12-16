@@ -10,224 +10,144 @@ require_once __DIR__ . '/../includes/functions.php';
 setJSONHeaders();
 
 $action = $_GET['action'] ?? '';
-$token = $_GET['token'] ?? $_POST['token'] ?? '';
+$token  = $_GET['token'] ?? $_POST['token'] ?? '';
 
-// Verifier si admin
+// Vérifier si admin
 if (!isAdmin($token)) {
     sendJSONResponse([
         'success' => false,
-        'message' => 'Acces non autorise'
+        'message' => 'Accès non autorisé'
     ], 403);
 }
 
-// STATISTIQUES DU TABLEAU DE BORD
+// ================================
+// STATISTIQUES DU DASHBOARD
+// ================================
 if ($action === 'getDashboardStats') {
     try {
         $conn = getDBConnection();
-        
-        // Compter produits
-        $stmt = $conn->query("SELECT COUNT(*) as count FROM products");
-        $products = $stmt->fetch()['count'];
-        
-        // Compter commandes
-        $stmt = $conn->query("SELECT COUNT(*) as count FROM orders");
-        $orders = $stmt->fetch()['count'];
-        
-        // Compter utilisateurs
-        $stmt = $conn->query("SELECT COUNT(*) as count FROM users");
-        $users = $stmt->fetch()['count'];
-        
-        // Total revenus
-        $stmt = $conn->query("SELECT SUM(total_amount) as total FROM orders WHERE status = 'completed'");
-        $revenue = $stmt->fetch()['total'] ?? 0;
-        
+
+        $products = $conn->query("SELECT COUNT(*) FROM products")->fetchColumn();
+        $orders   = $conn->query("SELECT COUNT(*) FROM orders")->fetchColumn();
+        $users    = $conn->query("SELECT COUNT(*) FROM users")->fetchColumn();
+        $revenue  = $conn->query("
+            SELECT COALESCE(SUM(total_amount), 0)
+            FROM orders
+            WHERE status = 'completed'
+        ")->fetchColumn();
+
         sendJSONResponse([
             'success' => true,
             'stats' => [
-                'products' => $products,
-                'orders' => $orders,
-                'users' => $users,
-                'revenue' => number_format($revenue, 0, ',', ' ')
+                'products' => (int)$products,
+                'orders'   => (int)$orders,
+                'users'    => (int)$users,
+                'revenue'  => number_format($revenue, 0, ',', ' ')
             ]
         ]);
-        
     } catch (Exception $e) {
-        logError("Erreur getDashboardStats: " . $e->getMessage());
+        logError('getDashboardStats: ' . $e->getMessage());
         sendJSONResponse([
             'success' => false,
-            'message' => 'Erreur lors du chargement'
+            'message' => 'Erreur dashboard'
         ], 500);
     }
 }
 
-// COMMANDES RECENTES
+// ================================
+// COMMANDES RÉCENTES
+// ================================
 elseif ($action === 'getRecentOrders') {
-    $limit = intval($_GET['limit'] ?? 10);
-    
     try {
+        $limit = intval($_GET['limit'] ?? 5);
         $conn = getDBConnection();
+
         $stmt = $conn->prepare("
-            SELECT o.*, u.first_name, u.last_name,
-                   CONCAT(u.first_name, ' ', u.last_name) as customer_name
+            SELECT o.*, 
+                   CONCAT(u.first_name, ' ', u.last_name) AS customer_name
             FROM orders o
-            LEFT JOIN users u ON o.user_id = u.id
+            LEFT JOIN users u ON u.id = o.user_id
             ORDER BY o.created_at DESC
             LIMIT ?
         ");
         $stmt->execute([$limit]);
-        $orders = $stmt->fetchAll();
-        
+
         sendJSONResponse([
             'success' => true,
-            'orders' => $orders
+            'orders' => $stmt->fetchAll(PDO::FETCH_ASSOC)
         ]);
-        
     } catch (Exception $e) {
-        logError("Erreur getRecentOrders: " . $e->getMessage());
+        logError('getRecentOrders: ' . $e->getMessage());
         sendJSONResponse([
             'success' => false,
-            'message' => 'Erreur lors du chargement'
+            'message' => 'Erreur chargement commandes'
         ], 500);
     }
 }
 
+// ================================
 // TOUTES LES COMMANDES
+// ================================
 elseif ($action === 'getAllOrders') {
     try {
         $conn = getDBConnection();
+
         $stmt = $conn->query("
-            SELECT o.*, u.first_name, u.last_name,
-                   CONCAT(u.first_name, ' ', u.last_name) as customer_name,
-                   COUNT(oi.id) as items_count
+            SELECT o.*, 
+                   CONCAT(u.first_name, ' ', u.last_name) AS customer_name,
+                   COUNT(oi.id) AS items_count
             FROM orders o
-            LEFT JOIN users u ON o.user_id = u.id
-            LEFT JOIN order_items oi ON o.id = oi.order_id
+            LEFT JOIN users u ON u.id = o.user_id
+            LEFT JOIN order_items oi ON oi.order_id = o.id
             GROUP BY o.id
             ORDER BY o.created_at DESC
         ");
-        $orders = $stmt->fetchAll();
-        
+
         sendJSONResponse([
             'success' => true,
-            'orders' => $orders
+            'orders' => $stmt->fetchAll(PDO::FETCH_ASSOC)
         ]);
-        
     } catch (Exception $e) {
-        logError("Erreur getAllOrders: " . $e->getMessage());
+        logError('getAllOrders: ' . $e->getMessage());
         sendJSONResponse([
             'success' => false,
-            'message' => 'Erreur'
+            'message' => 'Erreur commandes'
         ], 500);
     }
 }
 
+// ================================
 // TOUS LES UTILISATEURS
+// ================================
 elseif ($action === 'getAllUsers') {
     try {
         $conn = getDBConnection();
+
         $stmt = $conn->query("
-            SELECT id, first_name, last_name, email, phone, created_at, is_active
+            SELECT id, first_name, last_name, email, phone, created_at, is_admin
             FROM users
             ORDER BY created_at DESC
         ");
-        $users = $stmt->fetchAll();
-        
+
         sendJSONResponse([
             'success' => true,
-            'users' => $users
+            'users' => $stmt->fetchAll(PDO::FETCH_ASSOC)
         ]);
-        
     } catch (Exception $e) {
-        logError("Erreur getAllUsers: " . $e->getMessage());
+        logError('getAllUsers: ' . $e->getMessage());
         sendJSONResponse([
             'success' => false,
-            'message' => 'Erreur'
+            'message' => 'Erreur utilisateurs'
         ], 500);
     }
 }
 
-// DETAILS D'UNE COMMANDE
-elseif ($action === 'getOrderDetails') {
-    $order_id = intval($_GET['order_id'] ?? 0);
-    
-    try {
-        $conn = getDBConnection();
-        
-        // Info commande
-        $stmt = $conn->prepare("
-            SELECT o.*, u.first_name, u.last_name, u.email, u.phone
-            FROM orders o
-            LEFT JOIN users u ON o.user_id = u.id
-            WHERE o.id = ?
-        ");
-        $stmt->execute([$order_id]);
-        $order = $stmt->fetch();
-        
-        if (!$order) {
-            sendJSONResponse([
-                'success' => false,
-                'message' => 'Commande non trouvee'
-            ], 404);
-        }
-        
-        // Articles de la commande
-        $stmt = $conn->prepare("
-            SELECT oi.*, p.name as product_name, p.image_url
-            FROM order_items oi
-            LEFT JOIN products p ON oi.product_id = p.id
-            WHERE oi.order_id = ?
-        ");
-        $stmt->execute([$order_id]);
-        $items = $stmt->fetchAll();
-        
-        $order['items'] = $items;
-        
-        sendJSONResponse([
-            'success' => true,
-            'order' => $order
-        ]);
-        
-    } catch (Exception $e) {
-        logError("Erreur getOrderDetails: " . $e->getMessage());
-        sendJSONResponse([
-            'success' => false,
-            'message' => 'Erreur'
-        ], 500);
-    }
-}
-
-// METTRE A JOUR LE STATUT D'UNE COMMANDE
-elseif ($action === 'updateOrderStatus') {
-    $input = getJSONInput();
-    $order_id = intval($input['order_id'] ?? 0);
-    $status = sanitizeInput($input['status'] ?? '');
-    
-    try {
-        $conn = getDBConnection();
-        $stmt = $conn->prepare("
-            UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?
-        ");
-        $stmt->execute([$status, $order_id]);
-        
-        sendJSONResponse([
-            'success' => true,
-            'message' => 'Statut mis a jour'
-        ]);
-        
-    } catch (Exception $e) {
-        logError("Erreur updateOrderStatus: " . $e->getMessage());
-        sendJSONResponse([
-            'success' => false,
-            'message' => 'Erreur'
-        ], 500);
-    }
-}
-
-// Action inconnu
+// ================================
+// ACTION INCONNUE
+// ================================
 else {
     sendJSONResponse([
         'success' => false,
         'message' => 'Action non reconnue'
     ], 400);
 }
-?>
