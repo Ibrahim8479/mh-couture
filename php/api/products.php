@@ -2,6 +2,7 @@
 /**
  * API Gestion des Produits - MH Couture
  * Fichier: php/api/products.php
+ * VERSION CORRIGÉE
  */
 
 require_once __DIR__ . '/../config/database.php';
@@ -19,14 +20,29 @@ if ($action === 'getAll') {
             throw new Exception('Erreur de connexion à la base de données');
         }
         
-        $stmt = $conn->prepare("
-            SELECT id, name, description, category, price, image_url, stock, is_custom, created_at
-            FROM products
-            WHERE stock > 0
-            ORDER BY created_at DESC
-        ");
+        // Vérifier si admin pour voir tous les produits
+        $token = $_GET['token'] ?? '';
+        $isAdmin = isAdmin($token);
+        
+        if ($isAdmin) {
+            // Admin voit TOUS les produits (même stock 0)
+            $stmt = $conn->prepare("
+                SELECT id, name, description, category, price, image_url, stock, is_custom, created_at
+                FROM products
+                ORDER BY created_at DESC
+            ");
+        } else {
+            // Utilisateurs voient seulement produits en stock
+            $stmt = $conn->prepare("
+                SELECT id, name, description, category, price, image_url, stock, is_custom, created_at
+                FROM products
+                WHERE stock > 0
+                ORDER BY created_at DESC
+            ");
+        }
+        
         $stmt->execute();
-        $products = $stmt->fetchAll();
+        $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         sendJSONResponse([
             'success' => true,
@@ -37,7 +53,50 @@ if ($action === 'getAll') {
         logError("Erreur getAll products: " . $e->getMessage());
         sendJSONResponse([
             'success' => false,
-            'message' => 'Erreur lors du chargement des produits'
+            'message' => 'Erreur lors du chargement des produits: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+// RÉCUPÉRER UN PRODUIT PAR ID
+elseif ($action === 'getById') {
+    try {
+        $id = intval($_GET['id'] ?? 0);
+        
+        if ($id <= 0) {
+            throw new Exception('ID invalide');
+        }
+        
+        $conn = getDBConnection();
+        if (!$conn) {
+            throw new Exception('Erreur de connexion');
+        }
+        
+        $stmt = $conn->prepare("
+            SELECT id, name, description, category, price, image_url, stock, is_custom, created_at
+            FROM products
+            WHERE id = ?
+        ");
+        $stmt->execute([$id]);
+        $product = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($product) {
+            sendJSONResponse([
+                'success' => true,
+                'product' => $product
+            ]);
+        } else {
+            sendJSONResponse([
+                'success' => false,
+                'message' => 'Produit non trouvé'
+            ], 404);
+        }
+        
+    } catch (Exception $e) {
+        logError("Erreur getById product: " . $e->getMessage());
+        sendJSONResponse([
+            'success' => false,
+            'message' => 'Erreur: ' . $e->getMessage()
         ], 500);
     }
 }
@@ -45,6 +104,7 @@ if ($action === 'getAll') {
 // CRÉER UN PRODUIT (Admin uniquement)
 elseif ($action === 'create') {
     $token = $_POST['token'] ?? '';
+    
     if (!isAdmin($token)) {
         sendJSONResponse([
             'success' => false,
@@ -65,18 +125,25 @@ elseif ($action === 'create') {
         $description = sanitizeInput($_POST['description'] ?? '');
         $is_custom = isset($_POST['is_custom']) ? intval($_POST['is_custom']) : 0;
         
+        // Validation
+        if (empty($name) || empty($category) || $price <= 0) {
+            throw new Exception('Données invalides');
+        }
+        
         // Gestion de l'image
         $image_url = '';
-        if (isset($_FILES['image'])) {
-            $uploadResult = uploadFile($_FILES['image']);
+        if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+            $uploadResult = uploadFile($_FILES['image'], __DIR__ . '/../../uploads/products/');
             if ($uploadResult['success']) {
                 $image_url = 'uploads/products/' . $uploadResult['filename'];
+            } else {
+                throw new Exception($uploadResult['message']);
             }
         }
         
         $stmt = $conn->prepare("
-            INSERT INTO products (name, description, category, price, image_url, stock, is_custom)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO products (name, description, category, price, image_url, stock, is_custom, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
         ");
         
         $stmt->execute([
@@ -99,7 +166,7 @@ elseif ($action === 'create') {
         logError("Erreur create product: " . $e->getMessage());
         sendJSONResponse([
             'success' => false,
-            'message' => 'Erreur lors de la création du produit'
+            'message' => 'Erreur: ' . $e->getMessage()
         ], 500);
     }
 }
@@ -107,6 +174,7 @@ elseif ($action === 'create') {
 // METTRE À JOUR UN PRODUIT (Admin)
 elseif ($action === 'update') {
     $token = $_POST['token'] ?? '';
+    
     if (!isAdmin($token)) {
         sendJSONResponse([
             'success' => false,
@@ -128,19 +196,30 @@ elseif ($action === 'update') {
         $description = sanitizeInput($_POST['description'] ?? '');
         $is_custom = isset($_POST['is_custom']) ? intval($_POST['is_custom']) : 0;
         
+        // Validation
+        if ($id <= 0 || empty($name) || empty($category) || $price <= 0) {
+            throw new Exception('Données invalides');
+        }
+        
         // Récupérer l'ancienne image
         $stmt = $conn->prepare("SELECT image_url FROM products WHERE id = ?");
         $stmt->execute([$id]);
-        $product = $stmt->fetch();
-        $image_url = $product['image_url'] ?? '';
+        $product = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$product) {
+            throw new Exception('Produit non trouvé');
+        }
+        
+        $image_url = $product['image_url'];
         
         // Gestion de la nouvelle image
         if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-            if ($image_url && file_exists('../../' . $image_url)) {
-                unlink('../../' . $image_url);
+            // Supprimer l'ancienne image
+            if ($image_url && file_exists(__DIR__ . '/../../' . $image_url)) {
+                @unlink(__DIR__ . '/../../' . $image_url);
             }
             
-            $uploadResult = uploadFile($_FILES['image']);
+            $uploadResult = uploadFile($_FILES['image'], __DIR__ . '/../../uploads/products/');
             if ($uploadResult['success']) {
                 $image_url = 'uploads/products/' . $uploadResult['filename'];
             }
@@ -173,7 +252,7 @@ elseif ($action === 'update') {
         logError("Erreur update product: " . $e->getMessage());
         sendJSONResponse([
             'success' => false,
-            'message' => 'Erreur lors de la mise à jour'
+            'message' => 'Erreur: ' . $e->getMessage()
         ], 500);
     }
 }
@@ -193,6 +272,10 @@ elseif ($action === 'delete') {
     try {
         $id = intval($input['id'] ?? 0);
         
+        if ($id <= 0) {
+            throw new Exception('ID invalide');
+        }
+        
         $conn = getDBConnection();
         if (!$conn) {
             throw new Exception('Erreur de connexion');
@@ -201,15 +284,19 @@ elseif ($action === 'delete') {
         // Récupérer l'image avant suppression
         $stmt = $conn->prepare("SELECT image_url FROM products WHERE id = ?");
         $stmt->execute([$id]);
-        $product = $stmt->fetch();
+        $product = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$product) {
+            throw new Exception('Produit non trouvé');
+        }
         
         // Supprimer le produit
         $stmt = $conn->prepare("DELETE FROM products WHERE id = ?");
         $stmt->execute([$id]);
         
         // Supprimer l'image
-        if ($product && $product['image_url'] && file_exists('../../' . $product['image_url'])) {
-            unlink('../../' . $product['image_url']);
+        if ($product['image_url'] && file_exists(__DIR__ . '/../../' . $product['image_url'])) {
+            @unlink(__DIR__ . '/../../' . $product['image_url']);
         }
         
         sendJSONResponse([
@@ -221,46 +308,7 @@ elseif ($action === 'delete') {
         logError("Erreur delete product: " . $e->getMessage());
         sendJSONResponse([
             'success' => false,
-            'message' => 'Erreur lors de la suppression'
-        ], 500);
-    }
-}
-
-// RÉCUPÉRER UN PRODUIT PAR ID
-elseif ($action === 'getById') {
-    try {
-        $id = intval($_GET['id'] ?? 0);
-        
-        $conn = getDBConnection();
-        if (!$conn) {
-            throw new Exception('Erreur de connexion');
-        }
-        
-        $stmt = $conn->prepare("
-            SELECT id, name, description, category, price, image_url, stock, is_custom
-            FROM products
-            WHERE id = ?
-        ");
-        $stmt->execute([$id]);
-        $product = $stmt->fetch();
-        
-        if ($product) {
-            sendJSONResponse([
-                'success' => true,
-                'product' => $product
-            ]);
-        } else {
-            sendJSONResponse([
-                'success' => false,
-                'message' => 'Produit non trouvé'
-            ], 404);
-        }
-        
-    } catch (Exception $e) {
-        logError("Erreur getById product: " . $e->getMessage());
-        sendJSONResponse([
-            'success' => false,
-            'message' => 'Erreur lors de la récupération'
+            'message' => 'Erreur: ' . $e->getMessage()
         ], 500);
     }
 }
@@ -269,7 +317,7 @@ elseif ($action === 'getById') {
 else {
     sendJSONResponse([
         'success' => false,
-        'message' => 'Action non reconnue'
+        'message' => 'Action non reconnue: ' . $action
     ], 400);
 }
 ?>

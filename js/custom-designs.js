@@ -1,6 +1,7 @@
 // ===============================
-// CUSTOM-DESIGNS.JS - VERSION COMPLÈTE
+// CUSTOM-DESIGNS.JS - VERSION FINALE
 // Gestion des commandes sur mesure
+// Fichier: js/custom-designs.js
 // ===============================
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -20,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function handleCustomOrderSubmit(e) {
     e.preventDefault();
     
-    const token = window.authToken || localStorage.getItem('authToken');
+    const token = window.authToken || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     
     if (!token) {
         showError('Vous devez être connecté pour passer une commande');
@@ -47,14 +48,14 @@ async function handleCustomOrderSubmit(e) {
     
     // Validation
     if (!fullName || !email || !phone || !garmentType || !category || !description) {
-        showError('Veuillez remplir tous les champs obligatoires');
+        showError('⚠️ Veuillez remplir tous les champs obligatoires');
         return;
     }
     
     // Validation email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-        showError('Email invalide');
+        showError('⚠️ Email invalide');
         return;
     }
     
@@ -104,7 +105,7 @@ async function handleCustomOrderSubmit(e) {
             
             // Rediriger après 2 secondes
             setTimeout(() => {
-                window.location.href = 'profile.php?tab=custom-orders';
+                window.location.href = 'index.php';
             }, 2000);
         } else {
             showError('❌ Erreur: ' + (data.message || 'Erreur inconnue'));
@@ -121,7 +122,7 @@ async function handleCustomOrderSubmit(e) {
 
 // Mettre à jour le compteur du panier
 function updateCartCount() {
-    const token = window.authToken || localStorage.getItem('authToken');
+    const token = window.authToken || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     
     if (!token) return;
     
@@ -153,6 +154,7 @@ function showSuccess(message) {
         z-index: 10000;
         font-weight: 600;
         animation: slideIn 0.3s ease;
+        max-width: 400px;
     `;
     notification.textContent = message;
     
@@ -179,6 +181,7 @@ function showError(message) {
         z-index: 10000;
         font-weight: 600;
         animation: slideIn 0.3s ease;
+        max-width: 400px;
     `;
     notification.textContent = message;
     

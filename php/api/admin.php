@@ -2,6 +2,7 @@
 /**
  * API Administration - MH Couture
  * Fichier: php/api/admin.php
+ * VERSION COMPLÈTE
  */
 
 require_once __DIR__ . '/../config/database.php';
@@ -10,13 +11,19 @@ require_once __DIR__ . '/../includes/functions.php';
 setJSONHeaders();
 
 $action = $_GET['action'] ?? '';
-$token = $_GET['token'] ?? $_POST['token'] ?? '';
+$input = getJSONInput();
 
-// Verifier si admin
+if (empty($action) && !empty($input['action'])) {
+    $action = $input['action'];
+}
+
+$token = $_GET['token'] ?? $_POST['token'] ?? $input['token'] ?? '';
+
+// Vérifier si admin
 if (!isAdmin($token)) {
     sendJSONResponse([
         'success' => false,
-        'message' => 'Acces non autorise'
+        'message' => 'Accès non autorisé'
     ], 403);
 }
 
@@ -24,6 +31,9 @@ if (!isAdmin($token)) {
 if ($action === 'getDashboardStats') {
     try {
         $conn = getDBConnection();
+        if (!$conn) {
+            throw new Exception('Erreur de connexion');
+        }
         
         // Compter produits
         $stmt = $conn->query("SELECT COUNT(*) as count FROM products");
@@ -60,7 +70,7 @@ if ($action === 'getDashboardStats') {
     }
 }
 
-// COMMANDES RECENTES
+// COMMANDES RÉCENTES
 elseif ($action === 'getRecentOrders') {
     $limit = intval($_GET['limit'] ?? 10);
     
@@ -75,7 +85,7 @@ elseif ($action === 'getRecentOrders') {
             LIMIT ?
         ");
         $stmt->execute([$limit]);
-        $orders = $stmt->fetchAll();
+        $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         sendJSONResponse([
             'success' => true,
@@ -105,7 +115,7 @@ elseif ($action === 'getAllOrders') {
             GROUP BY o.id
             ORDER BY o.created_at DESC
         ");
-        $orders = $stmt->fetchAll();
+        $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         sendJSONResponse([
             'success' => true,
@@ -126,11 +136,12 @@ elseif ($action === 'getAllUsers') {
     try {
         $conn = getDBConnection();
         $stmt = $conn->query("
-            SELECT id, first_name, last_name, email, phone, created_at, is_active
+            SELECT id, first_name, last_name, email, phone, created_at, last_login, 
+                   is_active, is_admin, newsletter
             FROM users
             ORDER BY created_at DESC
         ");
-        $users = $stmt->fetchAll();
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         sendJSONResponse([
             'success' => true,
@@ -146,7 +157,7 @@ elseif ($action === 'getAllUsers') {
     }
 }
 
-// DETAILS D'UNE COMMANDE
+// DÉTAILS D'UNE COMMANDE
 elseif ($action === 'getOrderDetails') {
     $order_id = intval($_GET['order_id'] ?? 0);
     
@@ -161,12 +172,12 @@ elseif ($action === 'getOrderDetails') {
             WHERE o.id = ?
         ");
         $stmt->execute([$order_id]);
-        $order = $stmt->fetch();
+        $order = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$order) {
             sendJSONResponse([
                 'success' => false,
-                'message' => 'Commande non trouvee'
+                'message' => 'Commande non trouvée'
             ], 404);
         }
         
@@ -178,7 +189,7 @@ elseif ($action === 'getOrderDetails') {
             WHERE oi.order_id = ?
         ");
         $stmt->execute([$order_id]);
-        $items = $stmt->fetchAll();
+        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         $order['items'] = $items;
         
@@ -196,9 +207,8 @@ elseif ($action === 'getOrderDetails') {
     }
 }
 
-// METTRE A JOUR LE STATUT D'UNE COMMANDE
+// METTRE À JOUR LE STATUT D'UNE COMMANDE
 elseif ($action === 'updateOrderStatus') {
-    $input = getJSONInput();
     $order_id = intval($input['order_id'] ?? 0);
     $status = sanitizeInput($input['status'] ?? '');
     
@@ -211,7 +221,7 @@ elseif ($action === 'updateOrderStatus') {
         
         sendJSONResponse([
             'success' => true,
-            'message' => 'Statut mis a jour'
+            'message' => 'Statut mis à jour'
         ]);
         
     } catch (Exception $e) {
@@ -223,11 +233,143 @@ elseif ($action === 'updateOrderStatus') {
     }
 }
 
-// Action inconnu
+// ACTIVER/DÉSACTIVER UN UTILISATEUR
+elseif ($action === 'toggleUserStatus') {
+    $user_id = intval($input['user_id'] ?? 0);
+    $status = intval($input['status'] ?? 1);
+    
+    if (!$user_id) {
+        sendJSONResponse([
+            'success' => false,
+            'message' => 'ID utilisateur manquant'
+        ], 400);
+    }
+    
+    try {
+        $conn = getDBConnection();
+        
+        $stmt = $conn->prepare("
+            UPDATE users 
+            SET is_active = ? 
+            WHERE id = ?
+        ");
+        $stmt->execute([$status, $user_id]);
+        
+        sendJSONResponse([
+            'success' => true,
+            'message' => 'Statut utilisateur mis à jour'
+        ]);
+        
+    } catch (Exception $e) {
+        logError("Erreur toggleUserStatus: " . $e->getMessage());
+        sendJSONResponse([
+            'success' => false,
+            'message' => 'Erreur lors de la mise à jour'
+        ], 500);
+    }
+}
+
+// PROMOUVOIR/RÉTROGRADER UN ADMIN
+elseif ($action === 'toggleAdminStatus') {
+    $user_id = intval($input['user_id'] ?? 0);
+    $is_admin = intval($input['is_admin'] ?? 0);
+    
+    if (!$user_id) {
+        sendJSONResponse([
+            'success' => false,
+            'message' => 'ID utilisateur manquant'
+        ], 400);
+    }
+    
+    try {
+        $conn = getDBConnection();
+        
+        $stmt = $conn->prepare("
+            UPDATE users 
+            SET is_admin = ? 
+            WHERE id = ?
+        ");
+        $stmt->execute([$is_admin, $user_id]);
+        
+        sendJSONResponse([
+            'success' => true,
+            'message' => 'Statut administrateur mis à jour'
+        ]);
+        
+    } catch (Exception $e) {
+        logError("Erreur toggleAdminStatus: " . $e->getMessage());
+        sendJSONResponse([
+            'success' => false,
+            'message' => 'Erreur lors de la mise à jour'
+        ], 500);
+    }
+}
+
+// STATISTIQUES UTILISATEUR
+elseif ($action === 'getUserStats') {
+    $user_id = intval($_GET['user_id'] ?? 0);
+    
+    if (!$user_id) {
+        sendJSONResponse([
+            'success' => false,
+            'message' => 'ID utilisateur manquant'
+        ], 400);
+    }
+    
+    try {
+        $conn = getDBConnection();
+        
+        // Nombre de commandes
+        $stmt = $conn->prepare("
+            SELECT COUNT(*) as total 
+            FROM orders 
+            WHERE user_id = ?
+        ");
+        $stmt->execute([$user_id]);
+        $orders_count = $stmt->fetch()['total'] ?? 0;
+        
+        // Total dépensé
+        $stmt = $conn->prepare("
+            SELECT SUM(total_amount) as total 
+            FROM orders 
+            WHERE user_id = ? AND status = 'completed'
+        ");
+        $stmt->execute([$user_id]);
+        $total_spent = $stmt->fetch()['total'] ?? 0;
+        
+        // Articles dans le panier
+        $stmt = $conn->prepare("
+            SELECT SUM(quantity) as total 
+            FROM cart 
+            WHERE user_id = ?
+        ");
+        $stmt->execute([$user_id]);
+        $cart_items = $stmt->fetch()['total'] ?? 0;
+        
+        sendJSONResponse([
+            'success' => true,
+            'stats' => [
+                'orders' => $orders_count,
+                'spent' => $total_spent,
+                'cart' => $cart_items
+            ]
+        ]);
+        
+    } catch (Exception $e) {
+        logError("Erreur getUserStats: " . $e->getMessage());
+        sendJSONResponse([
+            'success' => false,
+            'message' => 'Erreur'
+        ], 500);
+    }
+}
+
+// Action inconnue
 else {
     sendJSONResponse([
         'success' => false,
-        'message' => 'Action non reconnue'
+        'message' => 'Action non reconnue: ' . $action
     ], 400);
-}
+} 
+  
 ?>
