@@ -1,5 +1,5 @@
 // ===============================
-// GALLERY.JS - VERSION CORRIGÉE
+// GALLERY.JS - VERSION FINALE CORRIGÉE
 // MH Couture - Affichage images corrigé
 // ===============================
 
@@ -49,7 +49,7 @@ function loadGallery() {
 }
 
 // ===============================
-// AFFICHER LA GALERIE - CORRECTION IMAGES
+// AFFICHER LA GALERIE - CORRECTION IMAGES FINALE
 // ===============================
 function displayGallery(images) {
     const grid = document.getElementById('galleryGrid');
@@ -62,21 +62,27 @@ function displayGallery(images) {
     }
     
     grid.innerHTML = images.map((img, index) => {
-        // ✅ CORRECTION : Gérer correctement les chemins d'images
+        // ✅ CORRECTION FINALE : Gérer correctement TOUS les cas de chemins d'images
         let imgSrc = 'https://via.placeholder.com/350x450/d97642/ffffff?text=MH+Couture';
         
-        if (img.image_url) {
-            // Si l'URL commence par uploads/, ajouter le slash
-            if (img.image_url.startsWith('uploads/')) {
-                imgSrc = img.image_url;
+        if (img.image_url && img.image_url.trim() !== '') {
+            const imageUrl = img.image_url.trim();
+            
+            // Cas 1: URL complète (http/https)
+            if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+                imgSrc = imageUrl;
             } 
-            // Si c'est une URL complète (http/https)
-            else if (img.image_url.startsWith('http')) {
-                imgSrc = img.image_url;
-            } 
-            // Sinon, utiliser tel quel
+            // Cas 2: Chemin commence par "uploads/"
+            else if (imageUrl.startsWith('uploads/')) {
+                imgSrc = imageUrl;
+            }
+            // Cas 3: Chemin commence par "/" (absolu depuis la racine)
+            else if (imageUrl.startsWith('/')) {
+                imgSrc = imageUrl.substring(1); // Enlever le / initial
+            }
+            // Cas 4: Chemin relatif sans slash
             else {
-                imgSrc = img.image_url;
+                imgSrc = imageUrl;
             }
         }
         
@@ -148,20 +154,27 @@ function openLightbox(index) {
     
     const img = allGalleryImages[index];
     
-    // ✅ CORRECTION : Gérer le chemin de l'image dans la lightbox
+    // ✅ CORRECTION FINALE : Gérer le chemin de l'image dans la lightbox
     let imgSrc = 'https://via.placeholder.com/800x600/d97642/ffffff?text=MH+Couture';
     
-    if (img.image_url) {
-        if (img.image_url.startsWith('uploads/')) {
-            imgSrc = img.image_url;
-        } else if (img.image_url.startsWith('http')) {
-            imgSrc = img.image_url;
+    if (img.image_url && img.image_url.trim() !== '') {
+        const imageUrl = img.image_url.trim();
+        
+        if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+            imgSrc = imageUrl;
+        } else if (imageUrl.startsWith('uploads/')) {
+            imgSrc = imageUrl;
+        } else if (imageUrl.startsWith('/')) {
+            imgSrc = imageUrl.substring(1);
         } else {
-            imgSrc = img.image_url;
+            imgSrc = imageUrl;
         }
     }
     
     lightboxImage.src = imgSrc;
+    lightboxImage.onerror = function() {
+        this.src = 'https://via.placeholder.com/800x600/d97642/ffffff?text=Image+Non+Disponible';
+    };
     
     if (lightboxCaption) {
         lightboxCaption.textContent = img.title || 'Image';
@@ -198,12 +211,15 @@ function changeLightboxImage(direction) {
 
 // Fermer lightbox avec Escape
 document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-        closeLightbox();
-    } else if (e.key === 'ArrowLeft') {
-        changeLightboxImage(-1);
-    } else if (e.key === 'ArrowRight') {
-        changeLightboxImage(1);
+    const lightbox = document.getElementById('lightbox');
+    if (lightbox && lightbox.classList.contains('active')) {
+        if (e.key === 'Escape') {
+            closeLightbox();
+        } else if (e.key === 'ArrowLeft') {
+            changeLightboxImage(-1);
+        } else if (e.key === 'ArrowRight') {
+            changeLightboxImage(1);
+        }
     }
 });
 

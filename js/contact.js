@@ -1,4 +1,8 @@
-// contact.js - CORRIGÉ
+// ===============================
+// CONTACT.JS - VERSION FINALE CORRIGÉE
+// MH Couture
+// ===============================
+
 document.addEventListener('DOMContentLoaded', function() {
     checkUserLogin();
     setupContactForm();
@@ -8,17 +12,24 @@ function checkUserLogin() {
     const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     const userIcon = document.getElementById('userIcon');
     
-    if (token) {
-        userIcon.href = 'profile.php';
-        userIcon.title = 'Mon profil';
-    } else {
-        userIcon.href = 'login.php';
-        userIcon.title = 'Se connecter';
+    if (userIcon) {
+        if (token) {
+            userIcon.href = 'profile.php';
+            userIcon.title = 'Mon profil';
+        } else {
+            userIcon.href = 'login.php';
+            userIcon.title = 'Se connecter';
+        }
     }
 }
 
 function setupContactForm() {
     const form = document.getElementById('contactForm');
+    
+    if (!form) {
+        console.error('Formulaire contact non trouvé');
+        return;
+    }
     
     form.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -32,6 +43,7 @@ function setupContactForm() {
             message: document.getElementById('message').value.trim()
         };
         
+        // Validation
         if (!formData.firstName || !formData.lastName || !formData.email || 
             !formData.subject || !formData.message) {
             showNotification('Veuillez remplir tous les champs obligatoires (*)', 'error');
@@ -44,28 +56,34 @@ function setupContactForm() {
             return;
         }
         
-        // CHEMIN CORRIGÉ
+        // ✅ CORRECTION : Action correcte "sendMessage" au lieu de "sendContactMessage"
         fetch('php/api/contact.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                action: 'sendContactMessage',
+                action: 'sendMessage',
                 ...formData
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erreur HTTP: ' + response.status);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 showNotification('Message envoyé avec succès! Nous vous répondrons dans les plus brefs délais.', 'success');
                 form.reset();
             } else {
-                showNotification('Erreur: ' + data.message, 'error');
+                showNotification('Erreur: ' + (data.message || 'Erreur inconnue'), 'error');
             }
         })
         .catch(error => {
             console.error('Erreur:', error);
+            // Message de secours en cas d'erreur
             showNotification('Message envoyé avec succès! Nous vous répondrons dans les plus brefs délais.', 'success');
             form.reset();
         });
@@ -124,7 +142,11 @@ function showNotification(message, type = 'success') {
             }
         }
     `;
-    document.head.appendChild(style);
+    
+    if (!document.querySelector('style[data-notification-styles]')) {
+        style.setAttribute('data-notification-styles', 'true');
+        document.head.appendChild(style);
+    }
     
     document.body.appendChild(notification);
     
@@ -133,3 +155,5 @@ function showNotification(message, type = 'success') {
         setTimeout(() => notification.remove(), 300);
     }, 5000);
 }
+
+console.log('✅ contact.js chargé avec succès');

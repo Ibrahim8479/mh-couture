@@ -195,6 +195,57 @@ function loadOrders() {
         });
 }
 
+
+// Dans profile.js, ajouter après loadOrders()
+
+function loadCustomOrders() {
+    const token = window.authToken;
+    
+    fetch('php/api/custom-orders.php?action=getUserCustomOrders&token=' + token)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.orders.length > 0) {
+                displayCustomOrders(data.orders);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+        });
+}
+
+function displayCustomOrders(orders) {
+    const ordersList = document.getElementById('ordersList');
+    
+    const html = orders.map(order => `
+        <div class="order-card custom-order">
+            <div class="order-header">
+                <span class="order-number">${order.order_number}</span>
+                <span class="order-status status-${order.status}">
+                    ${getCustomStatusText(order.status)}
+                </span>
+            </div>
+            <div class="order-details">
+                <p><strong>Type:</strong> ${order.garment_type}</p>
+                <p><strong>Date:</strong> ${formatDate(order.created_at)}</p>
+                <p><strong>Budget:</strong> ${parseInt(order.budget || 0).toLocaleString('fr-FR')} FCFA</p>
+            </div>
+        </div>
+    `).join('');
+    
+    ordersList.innerHTML += '<h4>Commandes Sur Mesure</h4>' + html;
+}
+
+function getCustomStatusText(status) {
+    const statuses = {
+        'pending': 'En attente',
+        'confirmed': 'Confirmée',
+        'in_progress': 'En cours',
+        'completed': 'Terminée',
+        'cancelled': 'Annulée'
+    };
+    return statuses[status] || status;
+}
+
 // Afficher les commandes
 function displayOrders(orders) {
     const ordersList = document.getElementById('ordersList');

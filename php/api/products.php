@@ -2,13 +2,17 @@
 /**
  * API Gestion des Produits - MH Couture
  * Fichier: php/api/products.php
- * VERSION CORRIGÉE
+ * VERSION FINALE CORRIGÉE
  */
+
+// ✅ CORRECTION 1: Headers UTF-8 corrects
+header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
+header('Access-Control-Allow-Headers: Content-Type');
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/functions.php';
-
-setJSONHeaders();
 
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
@@ -44,18 +48,28 @@ if ($action === 'getAll') {
         $stmt->execute();
         $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        sendJSONResponse([
+        // ✅ CORRECTION 2: S'assurer que image_url est défini
+        foreach ($products as &$product) {
+            if (empty($product['image_url'])) {
+                $product['image_url'] = null;
+            }
+        }
+        
+        // ✅ CORRECTION 3: JSON avec encodage UTF-8 correct
+        echo json_encode([
             'success' => true,
             'products' => $products
-        ]);
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         
     } catch (Exception $e) {
         logError("Erreur getAll products: " . $e->getMessage());
-        sendJSONResponse([
+        http_response_code(500);
+        echo json_encode([
             'success' => false,
             'message' => 'Erreur lors du chargement des produits: ' . $e->getMessage()
-        ], 500);
+        ], JSON_UNESCAPED_UNICODE);
     }
+    exit;
 }
 
 // RÉCUPÉRER UN PRODUIT PAR ID
@@ -81,24 +95,32 @@ elseif ($action === 'getById') {
         $product = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($product) {
-            sendJSONResponse([
+            // ✅ CORRECTION: Vérifier image_url
+            if (empty($product['image_url'])) {
+                $product['image_url'] = null;
+            }
+            
+            echo json_encode([
                 'success' => true,
                 'product' => $product
-            ]);
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         } else {
-            sendJSONResponse([
+            http_response_code(404);
+            echo json_encode([
                 'success' => false,
                 'message' => 'Produit non trouvé'
-            ], 404);
+            ], JSON_UNESCAPED_UNICODE);
         }
         
     } catch (Exception $e) {
         logError("Erreur getById product: " . $e->getMessage());
-        sendJSONResponse([
+        http_response_code(500);
+        echo json_encode([
             'success' => false,
             'message' => 'Erreur: ' . $e->getMessage()
-        ], 500);
+        ], JSON_UNESCAPED_UNICODE);
     }
+    exit;
 }
 
 // CRÉER UN PRODUIT (Admin uniquement)
@@ -106,10 +128,12 @@ elseif ($action === 'create') {
     $token = $_POST['token'] ?? '';
     
     if (!isAdmin($token)) {
-        sendJSONResponse([
+        http_response_code(403);
+        echo json_encode([
             'success' => false,
             'message' => 'Accès non autorisé'
-        ], 403);
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
     }
     
     try {
@@ -128,6 +152,12 @@ elseif ($action === 'create') {
         // Validation
         if (empty($name) || empty($category) || $price <= 0) {
             throw new Exception('Données invalides');
+        }
+        
+        // ✅ CORRECTION 4: Validation de la catégorie
+        $valid_categories = ['homme', 'femme', 'enfant'];
+        if (!in_array($category, $valid_categories)) {
+            throw new Exception('Catégorie invalide. Choisir: homme, femme ou enfant');
         }
         
         // Gestion de l'image
@@ -156,19 +186,21 @@ elseif ($action === 'create') {
             $is_custom
         ]);
         
-        sendJSONResponse([
+        echo json_encode([
             'success' => true,
             'message' => 'Produit créé avec succès',
             'product_id' => $conn->lastInsertId()
-        ]);
+        ], JSON_UNESCAPED_UNICODE);
         
     } catch (Exception $e) {
         logError("Erreur create product: " . $e->getMessage());
-        sendJSONResponse([
+        http_response_code(500);
+        echo json_encode([
             'success' => false,
             'message' => 'Erreur: ' . $e->getMessage()
-        ], 500);
+        ], JSON_UNESCAPED_UNICODE);
     }
+    exit;
 }
 
 // METTRE À JOUR UN PRODUIT (Admin)
@@ -176,10 +208,12 @@ elseif ($action === 'update') {
     $token = $_POST['token'] ?? '';
     
     if (!isAdmin($token)) {
-        sendJSONResponse([
+        http_response_code(403);
+        echo json_encode([
             'success' => false,
             'message' => 'Accès non autorisé'
-        ], 403);
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
     }
     
     try {
@@ -199,6 +233,12 @@ elseif ($action === 'update') {
         // Validation
         if ($id <= 0 || empty($name) || empty($category) || $price <= 0) {
             throw new Exception('Données invalides');
+        }
+        
+        // ✅ CORRECTION: Validation de la catégorie
+        $valid_categories = ['homme', 'femme', 'enfant'];
+        if (!in_array($category, $valid_categories)) {
+            throw new Exception('Catégorie invalide');
         }
         
         // Récupérer l'ancienne image
@@ -243,18 +283,20 @@ elseif ($action === 'update') {
             $id
         ]);
         
-        sendJSONResponse([
+        echo json_encode([
             'success' => true,
             'message' => 'Produit mis à jour avec succès'
-        ]);
+        ], JSON_UNESCAPED_UNICODE);
         
     } catch (Exception $e) {
         logError("Erreur update product: " . $e->getMessage());
-        sendJSONResponse([
+        http_response_code(500);
+        echo json_encode([
             'success' => false,
             'message' => 'Erreur: ' . $e->getMessage()
-        ], 500);
+        ], JSON_UNESCAPED_UNICODE);
     }
+    exit;
 }
 
 // SUPPRIMER UN PRODUIT (Admin)
@@ -263,10 +305,12 @@ elseif ($action === 'delete') {
     $token = $input['token'] ?? '';
     
     if (!isAdmin($token)) {
-        sendJSONResponse([
+        http_response_code(403);
+        echo json_encode([
             'success' => false,
             'message' => 'Accès non autorisé'
-        ], 403);
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
     }
     
     try {
@@ -299,25 +343,29 @@ elseif ($action === 'delete') {
             @unlink(__DIR__ . '/../../' . $product['image_url']);
         }
         
-        sendJSONResponse([
+        echo json_encode([
             'success' => true,
             'message' => 'Produit supprimé avec succès'
-        ]);
+        ], JSON_UNESCAPED_UNICODE);
         
     } catch (Exception $e) {
         logError("Erreur delete product: " . $e->getMessage());
-        sendJSONResponse([
+        http_response_code(500);
+        echo json_encode([
             'success' => false,
             'message' => 'Erreur: ' . $e->getMessage()
-        ], 500);
+        ], JSON_UNESCAPED_UNICODE);
     }
+    exit;
 }
 
 // Action inconnue
 else {
-    sendJSONResponse([
+    http_response_code(400);
+    echo json_encode([
         'success' => false,
         'message' => 'Action non reconnue: ' . $action
-    ], 400);
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
 }
 ?>

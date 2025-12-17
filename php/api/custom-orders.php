@@ -2,13 +2,23 @@
 /**
  * API Commandes Sur Mesure - MH Couture
  * Fichier: php/api/custom-orders.php
- * VERSION ALIGNÉE AVEC LA BASE DE DONNÉES
+ * VERSION FINALE CORRIGÉE
  */
+
+// ✅ CORRECTION 1: Headers UTF-8 corrects
+header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/functions.php';
 
-setJSONHeaders();
+// Gérer les requêtes OPTIONS
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
 $action = $_GET['action'] ?? '';
 if (empty($action)) {
@@ -21,10 +31,12 @@ if ($action === 'getAllCustomOrders') {
     $token = $_GET['token'] ?? '';
     
     if (!isAdmin($token)) {
-        sendJSONResponse([
+        http_response_code(403);
+        echo json_encode([
             'success' => false,
             'message' => 'Accès non autorisé'
-        ], 403);
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
     }
     
     try {
@@ -52,7 +64,15 @@ if ($action === 'getAllCustomOrders') {
                 created_at,
                 updated_at
             FROM custom_orders
-            ORDER BY created_at DESC
+            ORDER BY 
+                CASE status 
+                    WHEN 'pending' THEN 1
+                    WHEN 'confirmed' THEN 2
+                    WHEN 'in_progress' THEN 3
+                    WHEN 'completed' THEN 4
+                    ELSE 5
+                END,
+                created_at DESC
         ");
         
         $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -64,39 +84,44 @@ if ($action === 'getAllCustomOrders') {
                 $order['status'] = 'pending';
             }
             
-            // Convertir les images JSON
+            // ✅ CORRECTION 2: Décoder correctement les images JSON
             if (!empty($order['reference_images'])) {
-                $order['images'] = json_decode($order['reference_images'], true);
+                $images = json_decode($order['reference_images'], true);
+                $order['images'] = is_array($images) ? $images : [];
             } else {
                 $order['images'] = [];
             }
         }
         
-        sendJSONResponse([
+        echo json_encode([
             'success' => true,
             'orders' => $orders
-        ]);
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         
     } catch (Exception $e) {
-        logError("Erreur getAllCustomOrders: " . $e->getMessage());
-        sendJSONResponse([
+        error_log("Erreur getAllCustomOrders: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode([
             'success' => false,
             'message' => 'Erreur lors du chargement: ' . $e->getMessage()
-        ], 500);
+        ], JSON_UNESCAPED_UNICODE);
     }
+    exit;
 }
 
 // RÉCUPÉRER LES COMMANDES SUR MESURE DE L'UTILISATEUR
 elseif ($action === 'getUserCustomOrders') {
     $token = $_GET['token'] ?? '';
     
-    $user = getUserIdFromToken($token);
+    $user = getUserFromToken($token);
     
     if (!$user) {
-        sendJSONResponse([
+        http_response_code(401);
+        echo json_encode([
             'success' => false,
             'message' => 'Non authentifié'
-        ], 401);
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
     }
     
     try {
@@ -105,7 +130,7 @@ elseif ($action === 'getUserCustomOrders') {
             throw new Exception('Erreur de connexion');
         }
         
-        // Rechercher par email puisque la table n'a pas de user_id
+        // Rechercher par email
         $stmt = $conn->prepare("
             SELECT *
             FROM custom_orders
@@ -115,25 +140,37 @@ elseif ($action === 'getUserCustomOrders') {
         $stmt->execute([$user['email']]);
         $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        sendJSONResponse([
+        // Décoder les images
+        foreach ($orders as &$order) {
+            if (!empty($order['reference_images'])) {
+                $images = json_decode($order['reference_images'], true);
+                $order['images'] = is_array($images) ? $images : [];
+            } else {
+                $order['images'] = [];
+            }
+        }
+        
+        echo json_encode([
             'success' => true,
             'orders' => $orders
-        ]);
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         
     } catch (Exception $e) {
-        logError("Erreur getUserCustomOrders: " . $e->getMessage());
-        sendJSONResponse([
+        error_log("Erreur getUserCustomOrders: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode([
             'success' => false,
             'message' => 'Erreur lors du chargement'
-        ], 500);
+        ], JSON_UNESCAPED_UNICODE);
     }
+    exit;
 }
 
 // CRÉER UNE COMMANDE SUR MESURE
 elseif ($action === 'createCustomOrder') {
     $input = getJSONInput();
     
-    // Récupérer les données avec les deux formats possibles
+    // ✅ CORRECTION 3: Accepter les deux formats de noms de champs
     $full_name = sanitizeInput($input['fullName'] ?? $input['full_name'] ?? '');
     $email = sanitizeInput($input['email'] ?? '');
     $phone = sanitizeInput($input['phone'] ?? '');
@@ -146,28 +183,66 @@ elseif ($action === 'createCustomOrder') {
     $deadline = sanitizeInput($input['deadline'] ?? '');
     $reference_images = isset($input['images']) ? json_encode($input['images']) : '[]';
     
-    // Validation
-    if (empty($full_name) || empty($email) || empty($phone) || empty($garment_type) || empty($description)) {
-        sendJSONResponse([
+    // ✅ CORRECTION 4: Validation complète
+    if (empty($full_name)) {
+        http_response_code(400);
+        echo json_encode([
             'success' => false,
-            'message' => 'Informations requises manquantes'
-        ], 400);
+            'message' => 'Le nom complet est requis'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
     }
     
-    if (empty($category)) {
-        sendJSONResponse([
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        http_response_code(400);
+        echo json_encode([
             'success' => false,
-            'message' => 'Catégorie requise'
-        ], 400);
+            'message' => 'Email invalide'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    
+    if (empty($phone)) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Le téléphone est requis'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    
+    if (empty($garment_type)) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Le type de vêtement est requis'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    
+    if (empty($description) || strlen($description) < 10) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => 'La description doit contenir au moins 10 caractères'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
     }
     
     // Valider la catégorie
     $valid_categories = ['homme', 'femme', 'enfant'];
-    if (!in_array($category, $valid_categories)) {
-        sendJSONResponse([
+    if (empty($category) || !in_array($category, $valid_categories)) {
+        http_response_code(400);
+        echo json_encode([
             'success' => false,
-            'message' => 'Catégorie invalide'
-        ], 400);
+            'message' => 'Catégorie invalide. Choisir: homme, femme ou enfant'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    
+    // Valider has_measurements
+    if (!in_array($has_measurements, ['yes', 'no'])) {
+        $has_measurements = 'no';
     }
     
     try {
@@ -176,8 +251,17 @@ elseif ($action === 'createCustomOrder') {
             throw new Exception('Erreur de connexion');
         }
         
-        // Générer un numéro de commande unique
+        // ✅ CORRECTION 5: Générer un numéro de commande unique
         $order_number = 'CMD-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
+        
+        // Vérifier l'unicité
+        $stmt = $conn->prepare("SELECT COUNT(*) as count FROM custom_orders WHERE order_number = ?");
+        $stmt->execute([$order_number]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($result['count'] > 0) {
+            $order_number = 'CMD-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
+        }
         
         $stmt = $conn->prepare("
             INSERT INTO custom_orders (
@@ -213,20 +297,25 @@ elseif ($action === 'createCustomOrder') {
             $reference_images
         ]);
         
-        sendJSONResponse([
+        // ✅ CORRECTION 6: Envoyer email de confirmation (optionnel)
+        // sendCustomOrderConfirmation($email, $full_name, $order_number);
+        
+        echo json_encode([
             'success' => true,
-            'message' => 'Commande sur mesure créée avec succès',
+            'message' => 'Commande sur mesure créée avec succès! Nous vous contacterons sous 24h.',
             'order_id' => $conn->lastInsertId(),
             'order_number' => $order_number
-        ]);
+        ], JSON_UNESCAPED_UNICODE);
         
     } catch (Exception $e) {
-        logError("Erreur createCustomOrder: " . $e->getMessage());
-        sendJSONResponse([
+        error_log("Erreur createCustomOrder: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode([
             'success' => false,
             'message' => 'Erreur lors de la création: ' . $e->getMessage()
-        ], 500);
+        ], JSON_UNESCAPED_UNICODE);
     }
+    exit;
 }
 
 // RÉCUPÉRER LES DÉTAILS D'UNE COMMANDE SUR MESURE
@@ -234,13 +323,25 @@ elseif ($action === 'getCustomOrderDetails') {
     $token = $_GET['token'] ?? '';
     $order_id = intval($_GET['order_id'] ?? 0);
     
-    $user = getUserIdFromToken($token);
+    if ($order_id <= 0) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'message' => 'ID de commande invalide'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
     
-    if (!$user && !isAdmin($token)) {
-        sendJSONResponse([
+    $user = getUserFromToken($token);
+    $is_admin = isAdmin($token);
+    
+    if (!$user && !$is_admin) {
+        http_response_code(401);
+        echo json_encode([
             'success' => false,
             'message' => 'Non authentifié'
-        ], 401);
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
     }
     
     try {
@@ -249,8 +350,8 @@ elseif ($action === 'getCustomOrderDetails') {
             throw new Exception('Erreur de connexion');
         }
         
-        // Vérifier si admin ou propriétaire (par email)
-        if (isAdmin($token)) {
+        // Vérifier si admin ou propriétaire
+        if ($is_admin) {
             $stmt = $conn->prepare("SELECT * FROM custom_orders WHERE id = ?");
             $stmt->execute([$order_id]);
         } else {
@@ -261,31 +362,36 @@ elseif ($action === 'getCustomOrderDetails') {
         $order = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$order) {
-            sendJSONResponse([
+            http_response_code(404);
+            echo json_encode([
                 'success' => false,
                 'message' => 'Commande non trouvée'
-            ], 404);
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
         }
         
         // Décoder les images JSON
         if (!empty($order['reference_images'])) {
-            $order['images'] = json_decode($order['reference_images'], true);
+            $images = json_decode($order['reference_images'], true);
+            $order['images'] = is_array($images) ? $images : [];
         } else {
             $order['images'] = [];
         }
         
-        sendJSONResponse([
+        echo json_encode([
             'success' => true,
             'order' => $order
-        ]);
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         
     } catch (Exception $e) {
-        logError("Erreur getCustomOrderDetails: " . $e->getMessage());
-        sendJSONResponse([
+        error_log("Erreur getCustomOrderDetails: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode([
             'success' => false,
             'message' => 'Erreur lors du chargement'
-        ], 500);
+        ], JSON_UNESCAPED_UNICODE);
     }
+    exit;
 }
 
 // METTRE À JOUR LE STATUT D'UNE COMMANDE SUR MESURE (ADMIN)
@@ -296,19 +402,23 @@ elseif ($action === 'updateCustomOrderStatus') {
     $status = sanitizeInput($input['status'] ?? '');
     
     if (!isAdmin($token)) {
-        sendJSONResponse([
+        http_response_code(403);
+        echo json_encode([
             'success' => false,
             'message' => 'Accès non autorisé'
-        ], 403);
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
     }
     
-    // Valider le statut selon la base de données
+    // ✅ CORRECTION 7: Validation stricte du statut
     $valid_statuses = ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled'];
     if (!in_array($status, $valid_statuses)) {
-        sendJSONResponse([
+        http_response_code(400);
+        echo json_encode([
             'success' => false,
             'message' => 'Statut invalide. Statuts autorisés: ' . implode(', ', $valid_statuses)
-        ], 400);
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
     }
     
     try {
@@ -322,20 +432,26 @@ elseif ($action === 'updateCustomOrderStatus') {
             SET status = ?, updated_at = NOW() 
             WHERE id = ?
         ");
-        $stmt->execute([$status, $order_id]);
+        $result = $stmt->execute([$status, $order_id]);
         
-        sendJSONResponse([
+        if (!$result || $stmt->rowCount() === 0) {
+            throw new Exception('Commande non trouvée ou non modifiée');
+        }
+        
+        echo json_encode([
             'success' => true,
-            'message' => 'Statut mis à jour'
-        ]);
+            'message' => 'Statut mis à jour avec succès'
+        ], JSON_UNESCAPED_UNICODE);
         
     } catch (Exception $e) {
-        logError("Erreur updateCustomOrderStatus: " . $e->getMessage());
-        sendJSONResponse([
+        error_log("Erreur updateCustomOrderStatus: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode([
             'success' => false,
-            'message' => 'Erreur lors de la mise à jour'
-        ], 500);
+            'message' => 'Erreur lors de la mise à jour: ' . $e->getMessage()
+        ], JSON_UNESCAPED_UNICODE);
     }
+    exit;
 }
 
 // ANNULER UNE COMMANDE SUR MESURE
@@ -344,13 +460,15 @@ elseif ($action === 'cancelCustomOrder') {
     $token = $input['token'] ?? '';
     $order_id = intval($input['order_id'] ?? 0);
     
-    $user = getUserIdFromToken($token);
+    $user = getUserFromToken($token);
     
     if (!$user) {
-        sendJSONResponse([
+        http_response_code(401);
+        echo json_encode([
             'success' => false,
             'message' => 'Non authentifié'
-        ], 401);
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
     }
     
     try {
@@ -359,49 +477,80 @@ elseif ($action === 'cancelCustomOrder') {
             throw new Exception('Erreur de connexion');
         }
         
-        // Vérifier que la commande appartient à l'utilisateur (par email)
+        // Vérifier que la commande appartient à l'utilisateur
         $stmt = $conn->prepare("SELECT id, status FROM custom_orders WHERE id = ? AND email = ?");
         $stmt->execute([$order_id, $user['email']]);
         $order = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$order) {
-            sendJSONResponse([
+            http_response_code(404);
+            echo json_encode([
                 'success' => false,
                 'message' => 'Commande non trouvée'
-            ], 404);
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
         }
         
         // Vérifier que la commande peut être annulée
         if ($order['status'] === 'completed') {
-            sendJSONResponse([
+            http_response_code(400);
+            echo json_encode([
                 'success' => false,
                 'message' => 'Impossible d\'annuler une commande terminée'
-            ], 400);
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+        
+        if ($order['status'] === 'cancelled') {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Cette commande est déjà annulée'
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
         }
         
         // Annuler la commande
         $stmt = $conn->prepare("UPDATE custom_orders SET status = 'cancelled', updated_at = NOW() WHERE id = ?");
         $stmt->execute([$order_id]);
         
-        sendJSONResponse([
+        echo json_encode([
             'success' => true,
-            'message' => 'Commande annulée'
-        ]);
+            'message' => 'Commande annulée avec succès'
+        ], JSON_UNESCAPED_UNICODE);
         
     } catch (Exception $e) {
-        logError("Erreur cancelCustomOrder: " . $e->getMessage());
-        sendJSONResponse([
+        error_log("Erreur cancelCustomOrder: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode([
             'success' => false,
             'message' => 'Erreur lors de l\'annulation'
-        ], 500);
+        ], JSON_UNESCAPED_UNICODE);
     }
+    exit;
 }
 
 // Action inconnue
 else {
-    sendJSONResponse([
+    http_response_code(400);
+    echo json_encode([
         'success' => false,
         'message' => 'Action non reconnue: ' . $action
-    ], 400);
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// ✅ FONCTION HELPER: Récupérer utilisateur depuis token
+function getUserFromToken($token) {
+    if (empty($token)) return null;
+    
+    try {
+        $conn = getDBConnection();
+        $stmt = $conn->prepare("SELECT * FROM users WHERE token = ? AND is_active = 1");
+        $stmt->execute([$token]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        return null;
+    }
 }
 ?>

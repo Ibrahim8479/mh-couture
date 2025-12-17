@@ -1,5 +1,5 @@
 // ===============================
-// COLLECTIONS.JS - VERSION CORRIGÉE
+// COLLECTIONS.JS - VERSION FINALE CORRIGÉE
 // MH Couture - Affichage images produits corrigé
 // ===============================
 
@@ -50,7 +50,7 @@ function loadProducts() {
 }
 
 // ===============================
-// AFFICHER LES PRODUITS - CORRECTION IMAGES
+// AFFICHER LES PRODUITS - CORRECTION IMAGES FINALE
 // ===============================
 function displayProducts(products) {
     const grid = document.querySelector('.products-grid');
@@ -63,21 +63,27 @@ function displayProducts(products) {
     }
     
     grid.innerHTML = products.map(product => {
-        // ✅ CORRECTION : Gérer correctement les chemins d'images
+        // ✅ CORRECTION FINALE : Gérer correctement TOUS les cas de chemins d'images
         let imgSrc = 'https://via.placeholder.com/300x400/d97642/ffffff?text=MH+Couture';
         
-        if (product.image_url) {
-            // Si l'URL commence par uploads/, ajouter le slash
-            if (product.image_url.startsWith('uploads/')) {
-                imgSrc =product.image_url;
+        if (product.image_url && product.image_url.trim() !== '') {
+            const imageUrl = product.image_url.trim();
+            
+            // Cas 1: URL complète (http/https)
+            if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+                imgSrc = imageUrl;
             } 
-            // Si c'est une URL complète (http/https)
-            else if (product.image_url.startsWith('http')) {
-                imgSrc = product.image_url;
-            } 
-            // Sinon, utiliser tel quel
+            // Cas 2: Chemin commence par "uploads/"
+            else if (imageUrl.startsWith('uploads/')) {
+                imgSrc = imageUrl;
+            }
+            // Cas 3: Chemin commence par "/" (absolu depuis la racine)
+            else if (imageUrl.startsWith('/')) {
+                imgSrc = imageUrl.substring(1); // Enlever le / initial
+            }
+            // Cas 4: Chemin relatif sans slash
             else {
-                imgSrc = product.image_url;
+                imgSrc = imageUrl;
             }
         }
         
@@ -123,8 +129,8 @@ function setupFilters() {
             // Ajouter active au bouton cliqué
             btn.classList.add('active');
             
-            // Filtrer
-            currentFilter = btn.dataset.filter;
+            // Filtrer - Utiliser data-filter au lieu de data-category
+            currentFilter = btn.dataset.filter || btn.dataset.category || 'all';
             filterProducts();
         });
     });
@@ -143,7 +149,7 @@ function filterProducts() {
 // TRI
 // ===============================
 function setupSort() {
-    const sortSelect = document.querySelector('.sort-options select');
+    const sortSelect = document.querySelector('.sort-options select, #sortSelect');
     
     if (sortSelect) {
         sortSelect.addEventListener('change', (e) => {
@@ -167,6 +173,9 @@ function sortProducts(sortType) {
             break;
         case 'newest':
             sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            break;
+        case 'popular':
+            // Tri par popularité (à implémenter selon vos critères)
             break;
     }
     
