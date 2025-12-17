@@ -89,17 +89,17 @@ if (!$token) {
                 <div class="testimonials-grid">
                     <div class="testimonial-card">
                         <div class="stars">⭐⭐⭐⭐⭐</div>
-                        <p>"Un travail exceptionnel! Mon costume était parfaitement ajusté et la qualité est irréprochable."</p>
+                        <p>"Un travail exceptionnel! Mon tenu  était parfaitement ajusté et la qualité est irréprochable."</p>
                         <div class="author">
-                            <strong>Kofi A.</strong>
-                            <span>Costume sur mesure</span>
+                            <strong>Aisha Abdou.</strong>
+                            <span>Habit sur mesure</span>
                         </div>
                     </div>
                     <div class="testimonial-card">
                         <div class="stars">⭐⭐⭐⭐⭐</div>
                         <p>"Ma robe de mariée était magnifique! L'équipe a su capturer exactement ce que je voulais."</p>
                         <div class="author">
-                            <strong>Ama K.</strong>
+                            <strong>Zeinabou Abdoul</strong>
                             <span>Robe de mariée</span>
                         </div>
                     </div>
@@ -107,7 +107,7 @@ if (!$token) {
                         <div class="stars">⭐⭐⭐⭐⭐</div>
                         <p>"Service professionnel et création unique. Je recommande vivement MH Couture!"</p>
                         <div class="author">
-                            <strong>Kwame M.</strong>
+                            <strong>Idrissa Ali</strong>
                             <span>Ensemble traditionnel</span>
                         </div>
                     </div>
