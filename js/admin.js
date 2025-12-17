@@ -1,6 +1,6 @@
 // ===============================
-// ADMIN.JS - PARTIE 1/2
-// MH Couture - Version Complète et Fonctionnelle
+// ADMIN.JS - VERSION CORRIGÉE COMPLÈTE
+// MH Couture - Tous les bugs corrigés
 // ===============================
 
 let currentSection = 'dashboard';
@@ -19,7 +19,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupProductModal();
     setupGalleryModal();
     
-    // Charger la section depuis l'URL
     const urlParams = new URLSearchParams(window.location.search);
     const section = urlParams.get('section') || 'dashboard';
     showSection(section);
@@ -40,14 +39,13 @@ function setupNavigation() {
             const section = link.dataset.section;
             showSection(section);
             
-            // Mettre à jour l'URL
             window.history.pushState({}, '', `?section=${section}`);
         });
     });
 }
 
 function showSection(section) {
-    console.log('📍 Affichage de la section:', section);
+    console.log('📂 Affichage de la section:', section);
     
     document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
     const el = document.getElementById(section + '-section');
@@ -75,7 +73,6 @@ function showSection(section) {
 
     currentSection = section;
 
-    // Charger les données selon la section
     setTimeout(() => {
         if (section === 'products') {
             loadProducts();
@@ -119,10 +116,51 @@ function loadDashboardData() {
 }
 
 // ===============================
-// PRODUITS
+// PRODUITS - CORRECTION IMAGES
 // ===============================
+function loadProducts() {
+    console.log('🔄 Chargement des produits...');
+    
+    const tbody = document.querySelector('#productsTable tbody');
+    const grid = document.getElementById('productsGridAdmin');
+    
+    if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="6" class="loading">⏳ Chargement...</td></tr>';
+    }
+    if (grid) {
+        grid.innerHTML = '<div class="loading">⏳ Chargement...</div>';
+    }
+    
+    fetch('php/api/products.php?action=getAll')
+        .then(r => {
+            if (!r.ok) throw new Error('Erreur HTTP: ' + r.status);
+            return r.json();
+        })
+        .then(data => {
+            console.log('✅ Produits reçus:', data);
+            if (data.success && Array.isArray(data.products)) {
+                allProducts = data.products;
+                
+                if (currentProductView === 'grid') {
+                    displayProductsGrid(allProducts);
+                    if (document.querySelector('#products-section .table-container')) {
+                        document.querySelector('#products-section .table-container').style.display = 'none';
+                    }
+                } else {
+                    displayProducts(allProducts);
+                    if (grid) grid.style.display = 'none';
+                }
+            } else {
+                showProductsError(data.message || 'Erreur de chargement');
+            }
+        })
+        .catch(err => {
+            console.error('❌ Erreur:', err);
+            showProductsError('Erreur de connexion: ' + err.message);
+        });
+}
 
-
+// CORRECTION : Affichage des images produits
 function displayProducts(products) {
     const tbody = document.querySelector('#productsTable tbody');
     if (!tbody) return;
@@ -133,14 +171,20 @@ function displayProducts(products) {
     }
 
     tbody.innerHTML = products.map(p => {
+        // ✅ CORRECTION : Gérer correctement les chemins d'images
         let imgSrc = 'https://via.placeholder.com/50/d97642/ffffff?text=MH';
         
         if (p.image_url) {
+            // Si l'URL commence par uploads/, ajouter le slash
             if (p.image_url.startsWith('uploads/')) {
                 imgSrc = '/' + p.image_url;
-            } else if (p.image_url.startsWith('http')) {
+            } 
+            // Si c'est une URL complète
+            else if (p.image_url.startsWith('http')) {
                 imgSrc = p.image_url;
-            } else {
+            } 
+            // Sinon, utiliser tel quel
+            else {
                 imgSrc = p.image_url;
             }
         }
@@ -163,6 +207,96 @@ function displayProducts(products) {
             </td>
         </tr>`;
     }).join('');
+}
+
+// CORRECTION : Vue grille avec images
+function displayProductsGrid(products) {
+    let grid = document.getElementById('productsGridAdmin');
+    
+    if (!grid) {
+        const section = document.getElementById('products-section');
+        if (!section) return;
+        
+        const tableContainer = section.querySelector('.table-container');
+        grid = document.createElement('div');
+        grid.id = 'productsGridAdmin';
+        grid.className = 'products-grid-admin';
+        
+        if (tableContainer) {
+            tableContainer.parentNode.insertBefore(grid, tableContainer);
+        } else {
+            section.appendChild(grid);
+        }
+    }
+    
+    if (!products || products.length === 0) {
+        grid.innerHTML = '<div class="no-data">📦 Aucun produit</div>';
+        return;
+    }
+    
+    grid.innerHTML = products.map(product => {
+        // ✅ CORRECTION : Gérer les images dans la grille
+        let imgSrc = 'https://via.placeholder.com/300x400/d97642/ffffff?text=MH+Couture';
+        
+        if (product.image_url) {
+            if (product.image_url.startsWith('uploads/')) {
+                imgSrc = '/' + product.image_url;
+            } else if (product.image_url.startsWith('http')) {
+                imgSrc = product.image_url;
+            } else {
+                imgSrc = product.image_url;
+            }
+        }
+        
+        const price = Number(product.price || 0).toLocaleString('fr-FR');
+        const stock = Number(product.stock || 0);
+        
+        let stockBadge = '';
+        let stockClass = '';
+        if (stock === 0) {
+            stockBadge = 'Rupture';
+            stockClass = 'out-stock';
+        } else if (stock < 5) {
+            stockBadge = 'Stock faible';
+            stockClass = 'low-stock';
+        } else {
+            stockBadge = 'En stock';
+            stockClass = 'in-stock';
+        }
+        
+        return `
+            <div class="product-item-admin" data-category="${product.category || ''}">
+                ${product.is_custom == 1 ? '<span class="custom-badge">✂️ Sur mesure</span>' : ''}
+                <img src="${imgSrc}" alt="${product.name || 'Produit'}" 
+                     onerror="this.src='https://via.placeholder.com/300x400/d97642/ffffff?text=Image+Manquante'">
+                <div class="product-item-info">
+                    <h3>${product.name || 'Sans nom'}</h3>
+                    <p>${product.description || 'Pas de description'}</p>
+                    
+                    <div class="product-item-meta">
+                        <span class="product-item-category ${product.category}">${getCategoryName(product.category)}</span>
+                        <span class="product-item-price">${price} FCFA</span>
+                    </div>
+                    
+                    <div class="product-item-stock">
+                        <span>Stock: <strong>${stock}</strong></span>
+                        <span class="stock-badge ${stockClass}">${stockBadge}</span>
+                    </div>
+                    
+                    <div class="product-item-actions">
+                        <button class="btn-edit" onclick="editProduct(${product.id})">
+                            ✏️ Modifier
+                        </button>
+                        <button class="btn-delete" onclick="deleteProduct(${product.id})">
+                            🗑️ Supprimer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    console.log(`✅ ${products.length} produits affichés en grille`);
 }
 
 function showProductsError(message) {
@@ -201,8 +335,69 @@ function filterProducts() {
         filtered = filtered.filter(p => (p.name || '').toLowerCase().includes(q));
     }
 
-    displayProducts(filtered);
+    if (currentProductView === 'grid') {
+        displayProductsGrid(filtered);
+    } else {
+        displayProducts(filtered);
+    }
 }
+
+// Toggle view
+let currentProductView = 'grid';
+
+function toggleProductView(view) {
+    currentProductView = view;
+    
+    const grid = document.getElementById('productsGridAdmin');
+    const table = document.querySelector('#products-section .table-container');
+    const gridBtn = document.getElementById('viewGridBtn');
+    const tableBtn = document.getElementById('viewTableBtn');
+    
+    if (view === 'grid') {
+        if (grid) grid.style.display = 'grid';
+        if (table) table.style.display = 'none';
+        if (gridBtn) gridBtn.classList.add('active');
+        if (tableBtn) tableBtn.classList.remove('active');
+        
+        displayProductsGrid(allProducts);
+    } else {
+        if (grid) grid.style.display = 'none';
+        if (table) table.style.display = 'block';
+        if (gridBtn) gridBtn.classList.remove('active');
+        if (tableBtn) tableBtn.classList.add('active');
+        
+        displayProducts(allProducts);
+    }
+}
+
+function setupProductViewToggle() {
+    const section = document.getElementById('products-section');
+    if (!section) return;
+    
+    const header = section.querySelector('.section-header');
+    if (!header) return;
+    
+    if (document.getElementById('viewToggle')) return;
+    
+    const viewToggle = document.createElement('div');
+    viewToggle.id = 'viewToggle';
+    viewToggle.className = 'view-toggle';
+    viewToggle.innerHTML = `
+        <button id="viewGridBtn" class="active" onclick="toggleProductView('grid')">
+            📱 Vue Grille
+        </button>
+        <button id="viewTableBtn" onclick="toggleProductView('table')">
+            📋 Vue Table
+        </button>
+    `;
+    
+    header.appendChild(viewToggle);
+}
+
+// ===============================
+// ADMIN.JS - PARTIE 2
+// Galerie + Commandes Sur Mesure
+// ===============================
 
 // ===============================
 // GALERIE - CORRECTION COMPLÈTE
@@ -252,6 +447,7 @@ function displayGalleryAdmin(images) {
     }
     
     grid.innerHTML = images.map(img => {
+        // ✅ CORRECTION : Gérer les chemins d'images
         let imgSrc = 'https://via.placeholder.com/300x400/d97642/ffffff?text=MH+Couture';
         
         if (img.image_url) {
@@ -327,12 +523,6 @@ function filterGalleryAdmin() {
 }
 
 // ===============================
-// ADMIN.JS - COMMANDES SUR MESURE
-// Version corrigée alignée avec la DB
-// Ajoutez ce code à votre admin.js existant
-// ===============================
-
-// ===============================
 // COMMANDES SUR MESURE - CORRECTION
 // ===============================
 function loadCustomOrders() {
@@ -394,7 +584,7 @@ function displayCustomOrders(orders) {
             <td>
                 <div class="action-btns">
                     <button class="btn-view" onclick="viewCustomOrder(${order.id})">👁️ Voir</button>
-                    <button class="btn-edit" onclick="updateCustomOrderStatus(${order.id}, '${order.status}')">📝 Statut</button>
+                    <button class="btn-edit" onclick="updateCustomOrderStatus(${order.id}, '${order.status}')">🔄 Statut</button>
                 </div>
             </td>
         </tr>
@@ -402,217 +592,6 @@ function displayCustomOrders(orders) {
     
     console.log(`✅ ${orders.length} commandes sur mesure affichées`);
 }
-
-
-// ===============================
-// AFFICHAGE PRODUITS EN GRILLE
-// Ajoutez ce code à votre admin.js
-// ===============================
-
-let currentProductView = 'grid'; // 'grid' ou 'table'
-
-// Fonction pour afficher les produits en GRILLE (comme galerie)
-function displayProductsGrid(products) {
-    let grid = document.getElementById('productsGridAdmin');
-    
-    // Si le grid n'existe pas, le créer
-    if (!grid) {
-        const section = document.getElementById('products-section');
-        if (!section) return;
-        
-        // Créer le conteneur grid avant la table
-        const tableContainer = section.querySelector('.table-container');
-        grid = document.createElement('div');
-        grid.id = 'productsGridAdmin';
-        grid.className = 'products-grid-admin';
-        
-        if (tableContainer) {
-            tableContainer.parentNode.insertBefore(grid, tableContainer);
-        } else {
-            section.appendChild(grid);
-        }
-    }
-    
-    if (!products || products.length === 0) {
-        grid.innerHTML = '<div class="no-data">📦 Aucun produit</div>';
-        return;
-    }
-    
-    grid.innerHTML = products.map(product => {
-        let imgSrc = 'https://via.placeholder.com/300x400/d97642/ffffff?text=MH+Couture';
-        
-        if (product.image_url) {
-            if (product.image_url.startsWith('uploads/')) {
-                imgSrc = '/' + product.image_url;
-            } else if (product.image_url.startsWith('http')) {
-                imgSrc = product.image_url;
-            } else {
-                imgSrc = product.image_url;
-            }
-        }
-        
-        const price = Number(product.price || 0).toLocaleString('fr-FR');
-        const stock = Number(product.stock || 0);
-        
-        // Badge de stock
-        let stockBadge = '';
-        let stockClass = '';
-        if (stock === 0) {
-            stockBadge = 'Rupture';
-            stockClass = 'out-stock';
-        } else if (stock < 5) {
-            stockBadge = 'Stock faible';
-            stockClass = 'low-stock';
-        } else {
-            stockBadge = 'En stock';
-            stockClass = 'in-stock';
-        }
-        
-        return `
-            <div class="product-item-admin" data-category="${product.category || ''}">
-                ${product.is_custom == 1 ? '<span class="custom-badge">✂️ Sur mesure</span>' : ''}
-                <img src="${imgSrc}" alt="${product.name || 'Produit'}" 
-                     onerror="this.src='https://via.placeholder.com/300x400/d97642/ffffff?text=Image+Manquante'">
-                <div class="product-item-info">
-                    <h3>${product.name || 'Sans nom'}</h3>
-                    <p>${product.description || 'Pas de description'}</p>
-                    
-                    <div class="product-item-meta">
-                        <span class="product-item-category ${product.category}">${getCategoryName(product.category)}</span>
-                        <span class="product-item-price">${price} FCFA</span>
-                    </div>
-                    
-                    <div class="product-item-stock">
-                        <span>Stock: <strong>${stock}</strong></span>
-                        <span class="stock-badge ${stockClass}">${stockBadge}</span>
-                    </div>
-                    
-                    <div class="product-item-actions">
-                        <button class="btn-edit" onclick="editProduct(${product.id})">
-                            ✏️ Modifier
-                        </button>
-                        <button class="btn-delete" onclick="deleteProduct(${product.id})">
-                            🗑️ Supprimer
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-    
-    console.log(`✅ ${products.length} produits affichés en grille`);
-}
-
-// Fonction modifiée pour loadProducts avec support des deux vues
-function loadProducts() {
-    console.log('📄 Chargement des produits...');
-    
-    const tbody = document.querySelector('#productsTable tbody');
-    const grid = document.getElementById('productsGridAdmin');
-    
-    if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="6" class="loading">⏳ Chargement...</td></tr>';
-    }
-    if (grid) {
-        grid.innerHTML = '<div class="loading">⏳ Chargement...</div>';
-    }
-    
-    fetch('php/api/products.php?action=getAll')
-        .then(r => {
-            if (!r.ok) throw new Error('Erreur HTTP: ' + r.status);
-            return r.json();
-        })
-        .then(data => {
-            console.log('✅ Produits reçus:', data);
-            if (data.success && Array.isArray(data.products)) {
-                allProducts = data.products;
-                
-                // Afficher selon la vue active
-                if (currentProductView === 'grid') {
-                    displayProductsGrid(allProducts);
-                    // Masquer la table
-                    const tableContainer = document.querySelector('#products-section .table-container');
-                    if (tableContainer) tableContainer.style.display = 'none';
-                } else {
-                    displayProducts(allProducts); // Vue table existante
-                    if (grid) grid.style.display = 'none';
-                }
-            } else {
-                showProductsError(data.message || 'Erreur de chargement');
-            }
-        })
-        .catch(err => {
-            console.error('❌ Erreur:', err);
-            showProductsError('Erreur de connexion: ' + err.message);
-        });
-}
-
-// Fonction pour basculer entre vue grille et table
-function toggleProductView(view) {
-    currentProductView = view;
-    
-    const grid = document.getElementById('productsGridAdmin');
-    const table = document.querySelector('#products-section .table-container');
-    const gridBtn = document.getElementById('viewGridBtn');
-    const tableBtn = document.getElementById('viewTableBtn');
-    
-    if (view === 'grid') {
-        if (grid) grid.style.display = 'grid';
-        if (table) table.style.display = 'none';
-        if (gridBtn) gridBtn.classList.add('active');
-        if (tableBtn) tableBtn.classList.remove('active');
-        
-        displayProductsGrid(allProducts);
-    } else {
-        if (grid) grid.style.display = 'none';
-        if (table) table.style.display = 'block';
-        if (gridBtn) gridBtn.classList.remove('active');
-        if (tableBtn) tableBtn.classList.add('active');
-        
-        displayProducts(allProducts);
-    }
-}
-
-// Ajouter les boutons de basculement de vue
-function setupProductViewToggle() {
-    const section = document.getElementById('products-section');
-    if (!section) return;
-    
-    const header = section.querySelector('.section-header');
-    if (!header) return;
-    
-    // Vérifier si les boutons existent déjà
-    if (document.getElementById('viewToggle')) return;
-    
-    const viewToggle = document.createElement('div');
-    viewToggle.id = 'viewToggle';
-    viewToggle.className = 'view-toggle';
-    viewToggle.innerHTML = `
-        <button id="viewGridBtn" class="active" onclick="toggleProductView('grid')">
-            📱 Vue Grille
-        </button>
-        <button id="viewTableBtn" onclick="toggleProductView('table')">
-            📋 Vue Table
-        </button>
-    `;
-    
-    // Insérer après le titre
-    header.appendChild(viewToggle);
-}
-
-// Modifier l'initialisation dans showSection
-// Remplacez la partie products dans showSection par :
-/*
-if (section === 'products') {
-    loadProducts();
-    setupProductFilters();
-    setupProductViewToggle(); // AJOUTER CETTE LIGNE
-}
-*/
-
-console.log('✅ Module Affichage Produits Grille chargé');
-
-
 
 function showCustomOrdersError(message) {
     const tbody = document.querySelector('#customOrdersTable tbody');
@@ -628,7 +607,6 @@ function viewCustomOrder(id) {
         return;
     }
     
-    // Créer le modal de détails
     const modal = document.createElement('div');
     modal.className = 'modal active';
     modal.style.display = 'flex';
@@ -692,7 +670,6 @@ function viewCustomOrder(id) {
     
     document.body.appendChild(modal);
     
-    // Fermer en cliquant à l'extérieur
     modal.addEventListener('click', function(e) {
         if (e.target === modal) {
             modal.remove();
@@ -707,7 +684,6 @@ function updateCustomOrderStatus(orderId, currentStatus) {
         return;
     }
     
-    // Statuts disponibles selon la base de données
     const statuses = [
         { value: 'pending', label: 'En attente' },
         { value: 'confirmed', label: 'Confirmée' },
@@ -716,7 +692,6 @@ function updateCustomOrderStatus(orderId, currentStatus) {
         { value: 'cancelled', label: 'Annulée' }
     ];
     
-    // Créer le modal de sélection
     const modal = document.createElement('div');
     modal.className = 'modal active';
     modal.style.display = 'flex';
@@ -773,7 +748,7 @@ function saveCustomOrderStatus(orderId, modal) {
         if (data.success) {
             showSuccess('✅ Statut mis à jour avec succès');
             modal.remove();
-            loadCustomOrders(); // Recharger la liste
+            loadCustomOrders();
         } else {
             showError(data.message || 'Erreur lors de la mise à jour');
         }
@@ -795,449 +770,10 @@ function getCustomOrderStatusLabel(status) {
     return labels[status] || status;
 }
 
-// Styles CSS à ajouter
-const customOrderStyles = document.createElement('style');
-customOrderStyles.textContent = `
-    .form-control {
-        width: 100%;
-        padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        font-size: 14px;
-        transition: border-color 0.3s ease;
-    }
-    
-    .form-control:focus {
-        outline: none;
-        border-color: #d97642;
-        box-shadow: 0 0 0 3px rgba(217, 118, 66, 0.1);
-    }
-    
-    .status-confirmed {
-        background: #cfe2ff;
-        color: #084298;
-    }
-    
-    .status-in_progress {
-        background: #fff3cd;
-        color: #997404;
-    }
-`;
-document.head.appendChild(customOrderStyles);
-
-console.log('✅ Module Commandes Sur Mesure chargé et corrigé');
-// =============================== 
-// FIN DE LA PARTIE 1/2
-// Continuez avec la PARTIE 2/2
 // ===============================
+// ADMIN.JS - PARTIE 3
+// Modification/Suppression + Utilisateurs
 // ===============================
-// ADMIN.JS - PARTIE 2/2
-// MH Couture - Version Complète et Fonctionnelle
-// IMPORTANT: Coller cette partie APRÈS la PARTIE 1/2
-// ===============================
-
-// ===============================
-// UTILISATEURS
-// ===============================
-function loadUsers() {
-    console.log('👥 Chargement des utilisateurs...');
-    
-    const token = getAuthToken();
-    if (!token) {
-        showUsersError('Non authentifié');
-        return;
-    }
-    
-    const tbody = document.querySelector('#usersTable tbody');
-    if (!tbody) {
-        console.error('❌ Table usersTable non trouvée');
-        return;
-    }
-    
-    tbody.innerHTML = '<tr><td colspan="7" class="loading">⏳ Chargement...</td></tr>';
-    
-    fetch(`php/api/admin.php?action=getAllUsers&token=${encodeURIComponent(token)}`)
-        .then(r => {
-            if (!r.ok) throw new Error('Erreur HTTP: ' + r.status);
-            return r.json();
-        })
-        .then(data => {
-            console.log('✅ Utilisateurs:', data);
-            if (data.success && Array.isArray(data.users)) {
-                allUsers = data.users;
-                displayUsers(allUsers);
-            } else {
-                showUsersError(data.message || 'Erreur de chargement');
-            }
-        })
-        .catch(err => {
-            console.error('❌ Erreur:', err);
-            showUsersError('Erreur de connexion: ' + err.message);
-        });
-}
-
-
-
-// ===============================
-// FONCTION VIEW USER - COMPLÈTE
-// Ajoutez ce code à votre admin.js
-// ===============================
-
-function viewUser(id) {
-    const user = allUsers.find(u => u.id === id);
-    
-    if (!user) {
-        showError('Utilisateur non trouvé');
-        return;
-    }
-    
-    // Créer le modal
-    const modal = document.createElement('div');
-    modal.className = 'modal active';
-    modal.style.display = 'flex';
-    
-    // Formater la date d'inscription
-    const createdDate = user.created_at ? formatDate(user.created_at) : 'N/A';
-    const lastLogin = user.last_login ? formatDate(user.last_login) : 'Jamais';
-    
-    // Statut admin
-    const isAdmin = user.is_admin == 1;
-    const adminBadge = isAdmin 
-        ? '<span style="background: #27ae60; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">👑 Administrateur</span>'
-        : '<span style="background: #95a5a6; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">👤 Client</span>';
-    
-    // Statut compte
-    const isActive = user.is_active == 1;
-    const statusBadge = isActive
-        ? '<span style="background: #d4edda; color: #155724; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">✅ Actif</span>'
-        : '<span style="background: #f8d7da; color: #721c24; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">❌ Inactif</span>';
-    
-    modal.innerHTML = `
-        <div class="modal-content" style="max-width: 700px;">
-            <div class="modal-header">
-                <h2>👤 Détails de l'utilisateur</h2>
-                <button class="close-btn" onclick="this.closest('.modal').remove()">✕</button>
-            </div>
-            
-            <div style="padding: 25px;">
-                <!-- En-tête utilisateur -->
-                <div style="display: flex; align-items: center; gap: 20px; padding: 20px; background: #f8f9fa; border-radius: 12px; margin-bottom: 25px;">
-                    <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 32px; font-weight: 700;">
-                        ${(user.first_name?.[0] || 'U').toUpperCase()}
-                    </div>
-                    <div style="flex: 1;">
-                        <h3 style="margin: 0 0 8px 0; font-size: 24px; color: #2c3e50;">
-                            ${user.first_name || ''} ${user.last_name || ''}
-                        </h3>
-                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            ${adminBadge}
-                            ${statusBadge}
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Informations principales -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
-                    <div>
-                        <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">ID UTILISATEUR</p>
-                        <p style="margin: 0; font-size: 16px; color: #2c3e50; font-weight: 600;">#${user.id}</p>
-                    </div>
-                    
-                    <div>
-                        <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">EMAIL</p>
-                        <p style="margin: 0; font-size: 16px; color: #2c3e50;">
-                            <a href="mailto:${user.email}" style="color: #3498db; text-decoration: none;">
-                                ${user.email || 'N/A'}
-                            </a>
-                        </p>
-                    </div>
-                    
-                    <div>
-                        <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">TÉLÉPHONE</p>
-                        <p style="margin: 0; font-size: 16px; color: #2c3e50;">
-                            ${user.phone ? `<a href="tel:${user.phone}" style="color: #3498db; text-decoration: none;">${user.phone}</a>` : 'Non renseigné'}
-                        </p>
-                    </div>
-                    
-                    <div>
-                        <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">INSCRIPTION</p>
-                        <p style="margin: 0; font-size: 16px; color: #2c3e50;">${createdDate}</p>
-                    </div>
-                    
-                    <div>
-                        <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">DERNIÈRE CONNEXION</p>
-                        <p style="margin: 0; font-size: 16px; color: #2c3e50;">${lastLogin}</p>
-                    </div>
-                    
-                    <div>
-                        <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">NEWSLETTER</p>
-                        <p style="margin: 0; font-size: 16px; color: #2c3e50;">
-                            ${user.newsletter == 1 ? '✅ Abonné' : '❌ Non abonné'}
-                        </p>
-                    </div>
-                </div>
-                
-                <!-- Statistiques utilisateur -->
-                <div style="padding: 20px; background: #f8f9fa; border-radius: 12px; margin-bottom: 20px;">
-                    <h4 style="margin: 0 0 15px 0; font-size: 16px; color: #2c3e50;">📊 Statistiques</h4>
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
-                        <div style="text-align: center; padding: 15px; background: white; border-radius: 8px;">
-                            <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px;">Commandes</p>
-                            <p style="margin: 0; font-size: 24px; font-weight: 700; color: #3498db;">0</p>
-                        </div>
-                        <div style="text-align: center; padding: 15px; background: white; border-radius: 8px;">
-                            <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px;">Panier</p>
-                            <p style="margin: 0; font-size: 24px; font-weight: 700; color: #9b59b6;">0</p>
-                        </div>
-                        <div style="text-align: center; padding: 15px; background: white; border-radius: 8px;">
-                            <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px;">Total dépensé</p>
-                            <p style="margin: 0; font-size: 24px; font-weight: 700; color: #27ae60;">0 F</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Actions -->
-                ${isAdmin ? '' : `
-                <div style="padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 6px;">
-                    <p style="margin: 0; font-size: 14px; color: #856404;">
-                        <strong>⚠️ Actions administrateur :</strong><br>
-                        Vous pouvez promouvoir cet utilisateur en administrateur ou désactiver son compte.
-                    </p>
-                </div>
-                `}
-            </div>
-            
-            <div class="modal-footer">
-                <button class="btn-secondary" onclick="this.closest('.modal').remove()">
-                    Fermer
-                </button>
-                ${!isAdmin ? `
-                <button class="btn-primary" onclick="toggleAdminStatus(${user.id}, ${isAdmin}); this.closest('.modal').remove();">
-                    ${isAdmin ? '👤 Retirer admin' : '👑 Promouvoir admin'}
-                </button>
-                ` : ''}
-                <button class="btn-delete" onclick="toggleUserStatus(${user.id}, ${isActive}); this.closest('.modal').remove();">
-                    ${isActive ? '🔒 Désactiver' : '🔓 Activer'} le compte
-                </button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // Fermer en cliquant à l'extérieur
-    modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
-            modal.remove();
-        }
-    });
-    
-    // Charger les statistiques utilisateur (optionnel)
-    loadUserStats(user.id);
-}
-
-// Fonction pour charger les statistiques utilisateur
-function loadUserStats(userId) {
-    const token = getAuthToken();
-    if (!token) return;
-    
-    // Cette fonction peut être étendue pour charger:
-    // - Nombre de commandes
-    // - Montant total dépensé
-    // - Articles dans le panier
-    // etc.
-    
-    console.log('📊 Chargement des stats pour l\'utilisateur', userId);
-}
-
-// Fonction pour activer/désactiver un utilisateur
-function toggleUserStatus(userId, currentStatus) {
-    const action = currentStatus ? 'désactiver' : 'activer';
-    
-    if (!confirm(`Voulez-vous vraiment ${action} ce compte utilisateur ?`)) {
-        return;
-    }
-    
-    const token = getAuthToken();
-    if (!token) {
-        showError('Non authentifié');
-        return;
-    }
-    
-    const newStatus = currentStatus ? 0 : 1;
-    
-    fetch('php/api/admin.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            action: 'toggleUserStatus',
-            token: token,
-            user_id: userId,
-            status: newStatus
-        })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            showSuccess(`✅ Compte ${action} avec succès`);
-            loadUsers(); // Recharger la liste
-        } else {
-            showError(data.message || 'Erreur');
-        }
-    })
-    .catch(err => {
-        console.error('❌ Erreur:', err);
-        showError('Erreur de connexion');
-    });
-}
-
-// Fonction pour promouvoir/rétrograder un admin
-function toggleAdminStatus(userId, currentStatus) {
-    const action = currentStatus ? 'retirer les droits administrateur de' : 'promouvoir';
-    
-    if (!confirm(`Voulez-vous vraiment ${action} cet utilisateur ?`)) {
-        return;
-    }
-    
-    const token = getAuthToken();
-    if (!token) {
-        showError('Non authentifié');
-        return;
-    }
-    
-    const newStatus = currentStatus ? 0 : 1;
-    
-    fetch('php/api/admin.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            action: 'toggleAdminStatus',
-            token: token,
-            user_id: userId,
-            is_admin: newStatus
-        })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            showSuccess(`✅ Statut administrateur mis à jour`);
-            loadUsers(); // Recharger la liste
-        } else {
-            showError(data.message || 'Erreur');
-        }
-    })
-    .catch(err => {
-        console.error('❌ Erreur:', err);
-        showError('Erreur de connexion');
-    });
-}
-
-console.log('✅ Fonction viewUser() chargée');
-
-
-
-
-function displayUsers(users) {
-    const tbody = document.querySelector('#usersTable tbody');
-    if (!tbody) return;
-    
-    if (!users || users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="no-data">👥 Aucun utilisateur</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = users.map(user => `
-        <tr>
-            <td>${user.id}</td>
-            <td>${user.first_name || ''} ${user.last_name || ''}</td>
-            <td>${user.email || ''}</td>
-            <td>${user.phone || '-'}</td>
-            <td>${formatDate(user.created_at)}</td>
-            <td><span class="badge ${user.is_admin == 1 ? 'badge-success' : 'badge-secondary'}">${user.is_admin == 1 ? '👑 Admin' : '👤 Client'}</span></td>
-            <td>
-                <div class="action-btns">
-                    <button class="btn-view" onclick="viewUser(${user.id})">👁️ Voir</button>
-                </div>
-            </td>
-        </tr>
-    `).join('');
-    
-    console.log(`✅ ${users.length} utilisateurs affichés`);
-}
-
-function showUsersError(message) {
-    const tbody = document.querySelector('#usersTable tbody');
-    if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="7" class="no-data" style="color: #e74c3c;">❌ ${message}</td></tr>`;
-    }
-}
-
-function viewUser(id) {
-    showSuccess(`Vue de l'utilisateur ${id} - Fonctionnalité à implémenter`);
-}
-
-// ===============================
-// COMMANDES
-// ===============================
-function loadOrders() {
-    console.log('📋 Chargement des commandes...');
-    
-    const token = getAuthToken();
-    if (!token) return;
-    
-    const tbody = document.querySelector('#ordersTable tbody');
-    if (!tbody) {
-        console.error('❌ Table ordersTable non trouvée');
-        return;
-    }
-    
-    tbody.innerHTML = '<tr><td colspan="7" class="loading">⏳ Chargement...</td></tr>';
-    
-    fetch(`php/api/admin.php?action=getAllOrders&token=${encodeURIComponent(token)}`)
-        .then(r => r.json())
-        .then(data => {
-            console.log('✅ Commandes:', data);
-            if (data.success && Array.isArray(data.orders)) {
-                displayOrders(data.orders);
-            } else {
-                tbody.innerHTML = '<tr><td colspan="7" class="no-data">📋 Aucune commande</td></tr>';
-            }
-        })
-        .catch(err => {
-            console.error('❌ Erreur:', err);
-            tbody.innerHTML = `<tr><td colspan="7" class="no-data" style="color: #e74c3c;">❌ Erreur de chargement</td></tr>`;
-        });
-}
-
-function displayOrders(orders) {
-    const tbody = document.querySelector('#ordersTable tbody');
-    if (!tbody) return;
-    
-    if (!orders || orders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="no-data">📋 Aucune commande</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = orders.map(order => `
-        <tr>
-            <td>${order.order_number || 'N/A'}</td>
-            <td>${order.customer_name || 'N/A'}</td>
-            <td>${order.items_count || 0}</td>
-            <td>${Number(order.total_amount || 0).toLocaleString('fr-FR')} FCFA</td>
-            <td><span class="status-badge status-${order.status}">${getStatusLabel(order.status)}</span></td>
-            <td>${formatDate(order.created_at)}</td>
-            <td>
-                <button class="btn-view" onclick="viewOrder(${order.id})">👁️ Voir</button>
-            </td>
-        </tr>
-    `).join('');
-    
-    console.log(`✅ ${orders.length} commandes affichées`);
-}
-
-function viewOrder(id) {
-    showSuccess(`Vue de la commande ${id} - Fonctionnalité à implémenter`);
-}
 
 // ===============================
 // MODAL PRODUIT
@@ -1309,15 +845,23 @@ function openProductModal(productId = null) {
             document.getElementById('productDescription').value = product.description || '';
             document.getElementById('isCustom').checked = product.is_custom == 1;
             
+            // ✅ Afficher l'image actuelle
             if (product.image_url && preview) {
-                const imgSrc = product.image_url.startsWith('uploads/') 
-                    ? '/' + product.image_url 
-                    : product.image_url;
+                let imgSrc = product.image_url;
+                if (product.image_url.startsWith('uploads/')) {
+                    imgSrc = '/' + product.image_url;
+                }
                 preview.innerHTML = `<img src="${imgSrc}" onerror="this.style.display='none'" style="max-width: 200px; border-radius: 8px;">`;
             }
+            
+            // Rendre l'image optionnelle en modification
+            const imageInput = document.getElementById('productImage');
+            if (imageInput) imageInput.required = false;
         }
     } else {
         document.getElementById('modalTitle').textContent = 'Ajouter un produit';
+        const imageInput = document.getElementById('productImage');
+        if (imageInput) imageInput.required = true;
     }
 
     modal.classList.add('active');
@@ -1493,13 +1037,16 @@ function openGalleryModal(imageId = null) {
             document.getElementById('galleryDisplayOrder').value = image.display_order || 0;
             document.getElementById('galleryFeatured').checked = image.is_featured == 1;
             
+            // ✅ Afficher l'image actuelle
             if (image.image_url && preview) {
-                const imgSrc = image.image_url.startsWith('uploads/') 
-                    ? '/' + image.image_url 
-                    : image.image_url;
+                let imgSrc = image.image_url;
+                if (image.image_url.startsWith('uploads/')) {
+                    imgSrc = '/' + image.image_url;
+                }
                 preview.innerHTML = `<img src="${imgSrc}" onerror="this.style.display='none'" style="max-width: 200px; border-radius: 8px;">`;
             }
             
+            // Rendre l'image optionnelle en modification
             const imageInput = document.getElementById('galleryImage');
             if (imageInput) imageInput.required = false;
         }
@@ -1615,6 +1162,248 @@ function deleteGalleryImage(id) {
 }
 
 // ===============================
+// UTILISATEURS
+// ===============================
+function loadUsers() {
+    console.log('👥 Chargement des utilisateurs...');
+    
+    const token = getAuthToken();
+    if (!token) {
+        showUsersError('Non authentifié');
+        return;
+    }
+    
+    const tbody = document.querySelector('#usersTable tbody');
+    if (!tbody) {
+        console.error('❌ Table usersTable non trouvée');
+        return;
+    }
+    
+    tbody.innerHTML = '<tr><td colspan="7" class="loading">⏳ Chargement...</td></tr>';
+    
+    fetch(`php/api/admin.php?action=getAllUsers&token=${encodeURIComponent(token)}`)
+        .then(r => {
+            if (!r.ok) throw new Error('Erreur HTTP: ' + r.status);
+            return r.json();
+        })
+        .then(data => {
+            console.log('✅ Utilisateurs:', data);
+            if (data.success && Array.isArray(data.users)) {
+                allUsers = data.users;
+                displayUsers(allUsers);
+            } else {
+                showUsersError(data.message || 'Erreur de chargement');
+            }
+        })
+        .catch(err => {
+            console.error('❌ Erreur:', err);
+            showUsersError('Erreur de connexion: ' + err.message);
+        });
+}
+
+function displayUsers(users) {
+    const tbody = document.querySelector('#usersTable tbody');
+    if (!tbody) return;
+    
+    if (!users || users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="no-data">👥 Aucun utilisateur</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = users.map(user => `
+        <tr>
+            <td>${user.id}</td>
+            <td>${user.first_name || ''} ${user.last_name || ''}</td>
+            <td>${user.email || ''}</td>
+            <td>${user.phone || '-'}</td>
+            <td>${formatDate(user.created_at)}</td>
+            <td><span class="badge ${user.is_admin == 1 ? 'badge-success' : 'badge-secondary'}">${user.is_admin == 1 ? '👑 Admin' : '👤 Client'}</span></td>
+            <td>
+                <div class="action-btns">
+                    <button class="btn-view" onclick="viewUser(${user.id})">👁️ Voir</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+    
+    console.log(`✅ ${users.length} utilisateurs affichés`);
+}
+
+function showUsersError(message) {
+    const tbody = document.querySelector('#usersTable tbody');
+    if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="7" class="no-data" style="color: #e74c3c;">❌ ${message}</td></tr>`;
+    }
+}
+
+function viewUser(id) {
+    const user = allUsers.find(u => u.id === id);
+    
+    if (!user) {
+        showError('Utilisateur non trouvé');
+        return;
+    }
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.style.display = 'flex';
+    
+    const createdDate = user.created_at ? formatDate(user.created_at) : 'N/A';
+    const lastLogin = user.last_login ? formatDate(user.last_login) : 'Jamais';
+    
+    const isAdmin = user.is_admin == 1;
+    const adminBadge = isAdmin 
+        ? '<span style="background: #27ae60; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">👑 Administrateur</span>'
+        : '<span style="background: #95a5a6; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">👤 Client</span>';
+    
+    const isActive = user.is_active == 1;
+    const statusBadge = isActive
+        ? '<span style="background: #d4edda; color: #155724; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">✅ Actif</span>'
+        : '<span style="background: #f8d7da; color: #721c24; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">❌ Inactif</span>';
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2>👤 Détails de l'utilisateur</h2>
+                <button class="close-btn" onclick="this.closest('.modal').remove()">✕</button>
+            </div>
+            
+            <div style="padding: 25px;">
+                <div style="display: flex; align-items: center; gap: 20px; padding: 20px; background: #f8f9fa; border-radius: 12px; margin-bottom: 25px;">
+                    <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 32px; font-weight: 700;">
+                        ${(user.first_name?.[0] || 'U').toUpperCase()}
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 8px 0; font-size: 24px; color: #2c3e50;">
+                            ${user.first_name || ''} ${user.last_name || ''}
+                        </h3>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            ${adminBadge}
+                            ${statusBadge}
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+                    <div>
+                        <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">ID UTILISATEUR</p>
+                        <p style="margin: 0; font-size: 16px; color: #2c3e50; font-weight: 600;">#${user.id}</p>
+                    </div>
+                    
+                    <div>
+                        <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">EMAIL</p>
+                        <p style="margin: 0; font-size: 16px; color: #2c3e50;">
+                            <a href="mailto:${user.email}" style="color: #3498db; text-decoration: none;">
+                                ${user.email || 'N/A'}
+                            </a>
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">TÉLÉPHONE</p>
+                        <p style="margin: 0; font-size: 16px; color: #2c3e50;">
+                            ${user.phone ? `<a href="tel:${user.phone}" style="color: #3498db; text-decoration: none;">${user.phone}</a>` : 'Non renseigné'}
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">INSCRIPTION</p>
+                        <p style="margin: 0; font-size: 16px; color: #2c3e50;">${createdDate}</p>
+                    </div>
+                    
+                    <div>
+                        <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">DERNIÈRE CONNEXION</p>
+                        <p style="margin: 0; font-size: 16px; color: #2c3e50;">${lastLogin}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="this.closest('.modal').remove()">
+                    Fermer
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+
+// ===============================
+// COMMANDES
+// ===============================
+function loadOrders() {
+    console.log('📋 Chargement des commandes...');
+    
+    const token = getAuthToken();
+    if (!token) return;
+    
+    const tbody = document.querySelector('#ordersTable tbody');
+    if (!tbody) {
+        console.error('❌ Table ordersTable non trouvée');
+        return;
+    }
+    
+    tbody.innerHTML = '<tr><td colspan="7" class="loading">⏳ Chargement...</td></tr>';
+    
+    fetch(`php/api/admin.php?action=getAllOrders&token=${encodeURIComponent(token)}`)
+        .then(r => r.json())
+        .then(data => {
+            console.log('✅ Commandes:', data);
+            if (data.success && Array.isArray(data.orders)) {
+                displayOrders(data.orders);
+            } else {
+                tbody.innerHTML = '<tr><td colspan="7" class="no-data">📋 Aucune commande</td></tr>';
+            }
+        })
+        .catch(err => {
+            console.error('❌ Erreur:', err);
+            tbody.innerHTML = `<tr><td colspan="7" class="no-data" style="color: #e74c3c;">❌ Erreur de chargement</td></tr>`;
+        });
+}
+
+function displayOrders(orders) {
+    const tbody = document.querySelector('#ordersTable tbody');
+    if (!tbody) return;
+    
+    if (!orders || orders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="no-data">📋 Aucune commande</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = orders.map(order => `
+        <tr>
+            <td>${order.order_number || 'N/A'}</td>
+            <td>${order.customer_name || 'N/A'}</td>
+            <td>${order.items_count || 0}</td>
+            <td>${Number(order.total_amount || 0).toLocaleString('fr-FR')} FCFA</td>
+            <td><span class="status-badge status-${order.status}">${getStatusLabel(order.status)}</span></td>
+            <td>${formatDate(order.created_at)}</td>
+            <td>
+                <button class="btn-view" onclick="viewOrder(${order.id})">👁️ Voir</button>
+            </td>
+        </tr>
+    `).join('');
+    
+    console.log(`✅ ${orders.length} commandes affichées`);
+}
+
+function viewOrder(id) {
+    showSuccess(`Vue de la commande ${id} - Fonctionnalité à implémenter`);
+}
+
+// ===============================
+// ADMIN.JS - PARTIE 4 (FIN)
+// Utilitaires et Helpers
+// ===============================
+
+// ===============================
 // UTILITAIRES
 // ===============================
 function getCategoryName(category) {
@@ -1636,7 +1425,9 @@ function getStatusLabel(status) {
         completed: 'Terminé',
         cancelled: 'Annulé',
         paid: 'Payé',
-        shipped: 'Expédié'
+        shipped: 'Expédié',
+        confirmed: 'Confirmée',
+        in_progress: 'En cours'
     };
     return labels[status] || status;
 }
@@ -1647,7 +1438,9 @@ function formatDate(dateString) {
     return date.toLocaleDateString('fr-FR', {
         year: 'numeric',
         month: 'short',
-        day: 'numeric'
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
     });
 }
 
@@ -1730,13 +1523,321 @@ style.textContent = `
         background: #e2e3e5;
         color: #383d41;
     }
+    
+    /* Vue Grille Produits */
+    .products-grid-admin {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 25px;
+        padding: 20px 0;
+    }
+    
+    .product-item-admin {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        position: relative;
+    }
+    
+    .product-item-admin:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(217, 118, 66, 0.2);
+    }
+    
+    .product-item-admin img {
+        width: 100%;
+        height: 320px;
+        object-fit: cover;
+    }
+    
+    .product-item-info {
+        padding: 20px;
+    }
+    
+    .product-item-info h3 {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0 0 8px 0;
+    }
+    
+    .product-item-info p {
+        font-size: 14px;
+        color: #7f8c8d;
+        margin: 0 0 12px 0;
+        line-height: 1.5;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .product-item-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #ecf0f1;
+    }
+    
+    .product-item-category {
+        display: inline-block;
+        padding: 4px 12px;
+        background: #3498db;
+        color: white;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .product-item-category.homme {
+        background: #3498db;
+    }
+    
+    .product-item-category.femme {
+        background: #e74c3c;
+    }
+    
+    .product-item-category.enfant {
+        background: #9b59b6;
+    }
+    
+    .product-item-price {
+        font-size: 18px;
+        font-weight: 700;
+        color: #d97642;
+    }
+    
+    .product-item-stock {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #7f8c8d;
+        margin-bottom: 15px;
+    }
+    
+    .product-item-stock .stock-badge {
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    
+    .product-item-stock .stock-badge.in-stock {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .product-item-stock .stock-badge.low-stock {
+        background: #fff3cd;
+        color: #856404;
+    }
+    
+    .product-item-stock .stock-badge.out-stock {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    
+    .product-item-actions {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .product-item-actions button {
+        flex: 1;
+        padding: 10px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+    }
+    
+    .product-item-actions .btn-edit {
+        background: #3498db;
+        color: white;
+    }
+    
+    .product-item-actions .btn-edit:hover {
+        background: #2980b9;
+    }
+    
+    .product-item-actions .btn-delete {
+        background: #e74c3c;
+        color: white;
+    }
+    
+    .product-item-actions .btn-delete:hover {
+        background: #c0392b;
+    }
+    
+    .custom-badge {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: #f39c12;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 700;
+        z-index: 10;
+    }
+    
+    /* Toggle view buttons */
+    .view-toggle {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .view-toggle button {
+        padding: 8px 16px;
+        border: 2px solid #d97642;
+        background: white;
+        color: #d97642;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .view-toggle button.active {
+        background: #d97642;
+        color: white;
+    }
+    
+    .view-toggle button:hover {
+        background: #d97642;
+        color: white;
+    }
+    
+    /* Galerie Admin */
+    .gallery-grid-admin {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 24px;
+        margin-top: 30px;
+    }
+    
+    .gallery-item-admin {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        position: relative;
+    }
+    
+    .gallery-item-admin:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+    
+    .gallery-item-admin img {
+        width: 100%;
+        height: 250px;
+        object-fit: cover;
+    }
+    
+    .gallery-item-info {
+        padding: 16px;
+    }
+    
+    .gallery-item-info h3 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 8px;
+    }
+    
+    .gallery-item-info p {
+        font-size: 13px;
+        color: #7f8c8d;
+        margin-bottom: 12px;
+        line-height: 1.4;
+    }
+    
+    .gallery-item-category {
+        display: inline-block;
+        padding: 4px 12px;
+        background: #ecf0f1;
+        color: #34495e;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 12px;
+    }
+    
+    .gallery-item-actions {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .featured-badge {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: linear-gradient(135deg, #f39c12, #e67e22);
+        color: white;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        box-shadow: 0 4px 12px rgba(243, 156, 18, 0.4);
+    }
+    
+    /* Form control */
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.3s ease;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #d97642;
+        box-shadow: 0 0 0 3px rgba(217, 118, 66, 0.1);
+    }
+    
+    /* Status badges */
+    .status-confirmed {
+        background: #cfe2ff;
+        color: #084298;
+    }
+    
+    .status-in_progress {
+        background: #fff3cd;
+        color: #997404;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .products-grid-admin {
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 15px;
+        }
+        
+        .gallery-grid-admin {
+            grid-template-columns: 1fr;
+        }
+    }
 `;
 document.head.appendChild(style);
 
-console.log('✅ Admin.js chargé avec succès - Version complète et fonctionnelle');
+console.log('✅ Admin.js chargé avec succès - Version complète et corrigée');
 
 // ===============================
-// FIN DE LA PARTIE 2/2
-// FICHIER COMPLET
+// FIN DU FICHIER ADMIN.JS
 // ===============================
-

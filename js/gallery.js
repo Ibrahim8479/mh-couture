@@ -1,313 +1,175 @@
-// gallery.js - VERSION CORRIGÉE ET FONCTIONNELLE
-let currentLightboxIndex = 0;
-let galleryImages = [];
+// ===============================
+// GALLERY.JS - VERSION CORRIGÉE
+// MH Couture - Affichage images corrigé
+// ===============================
 
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🖼️ Galerie chargée');
-    checkUserLogin();
-    updateCartCount();
-    loadGalleryFromAPI();
+let allGalleryImages = [];
+let currentImageIndex = 0;
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('✅ Page Galerie chargée');
+    
+    loadGallery();
     setupFilters();
-    setupLightbox();
+    updateCartCount();
 });
 
-function checkUserLogin() {
-    const token = getCookie('auth_token') || localStorage.getItem('authToken');
-    const userIcon = document.getElementById('userIcon');
+// ===============================
+// CHARGER LA GALERIE
+// ===============================
+function loadGallery() {
+    const grid = document.getElementById('galleryGrid');
     
-    if (token && userIcon) {
-        userIcon.href = 'profile.php';
-        userIcon.title = 'Mon profil';
-    } else if (userIcon) {
-        userIcon.href = 'login.php';
-        userIcon.title = 'Se connecter';
-    }
-}
-
-function updateCartCount() {
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const cartCount = document.getElementById('cartCount');
-    if (cartCount) {
-        const totalItems = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
-        cartCount.textContent = totalItems;
-    }
-}
-
-// Charger depuis l'API Gallery
-function loadGalleryFromAPI() {
-    const galleryGrid = document.getElementById('galleryGrid');
-    
-    if (!galleryGrid) {
-        console.error('❌ galleryGrid non trouvé');
+    if (!grid) {
+        console.error('❌ Element galleryGrid non trouvé');
         return;
     }
     
-    galleryGrid.innerHTML = '<div class="loading" style="grid-column: 1/-1; text-align: center; padding: 60px;">⏳ Chargement de la galerie...</div>';
-    
-    console.log('📡 Chargement galerie depuis API...');
+    grid.innerHTML = '<div class="loading">⏳ Chargement de la galerie...</div>';
     
     fetch('php/api/gallery.php?action=getAll')
-        .then(response => {
-            console.log('📡 Réponse status:', response.status);
-            if (!response.ok) throw new Error('Erreur de chargement: ' + response.status);
-            return response.json();
+        .then(r => {
+            console.log('📡 Réponse galerie:', r.status);
+            if (!r.ok) throw new Error('Erreur HTTP: ' + r.status);
+            return r.json();
         })
         .then(data => {
             console.log('✅ Données reçues:', data);
-            if (data.success && data.gallery && data.gallery.length > 0) {
-                console.log(`✅ ${data.gallery.length} images chargées`);
-                displayGallery(data.gallery);
+            if (data.success && Array.isArray(data.gallery)) {
+                allGalleryImages = data.gallery;
+                displayGallery(allGalleryImages);
             } else {
-                console.log('⚠️ Galerie vide, chargement depuis produits...');
-                loadFromProducts();
+                showError('Erreur de chargement de la galerie');
             }
         })
-        .catch(error => {
-            console.error('❌ Erreur:', error);
-            loadFromProducts();
+        .catch(err => {
+            console.error('❌ Erreur:', err);
+            showError('Erreur de connexion: ' + err.message);
         });
 }
 
-// Fallback: charger depuis les produits
-function loadFromProducts() {
-    console.log('📦 Chargement depuis produits...');
-    
-    fetch('php/api/products.php?action=getAll')
-        .then(response => response.json())
-        .then(data => {
-            console.log('📦 Produits reçus:', data);
-            if (data.success && data.products && data.products.length > 0) {
-                const galleryData = data.products.map(p => ({
-                    title: p.name,
-                    description: p.description || '',
-                    category: p.category,
-                    image_url: p.image_url,
-                    is_featured: 0
-                }));
-                console.log(`✅ ${galleryData.length} produits convertis en galerie`);
-                displayGallery(galleryData);
-            } else {
-                console.log('⚠️ Aucun produit, affichage galerie par défaut');
-                displayDefaultGallery();
-            }
-        })
-        .catch((err) => {
-            console.error('❌ Erreur produits:', err);
-            displayDefaultGallery();
-        });
-}
-
-// Afficher la galerie
+// ===============================
+// AFFICHER LA GALERIE - CORRECTION IMAGES
+// ===============================
 function displayGallery(images) {
-    const galleryGrid = document.getElementById('galleryGrid');
-    if (!galleryGrid) {
-        console.error('❌ galleryGrid non trouvé');
-        return;
-    }
+    const grid = document.getElementById('galleryGrid');
     
-    galleryImages = [];
+    if (!grid) return;
     
     if (!images || images.length === 0) {
-        galleryGrid.innerHTML = '<div class="no-data" style="grid-column: 1/-1; text-align: center; padding: 60px; color: #666;">📷 Aucune image disponible</div>';
+        grid.innerHTML = '<div class="no-data">📷 Aucune image dans la galerie</div>';
         return;
     }
     
-    galleryGrid.innerHTML = images.map((item, index) => {
-        // Déterminer l'URL de l'image
-        let imageUrl = 'https://via.placeholder.com/400x500/d97642/ffffff?text=MH+Couture';
+    grid.innerHTML = images.map((img, index) => {
+        // ✅ CORRECTION : Gérer correctement les chemins d'images
+        let imgSrc = 'https://via.placeholder.com/350x450/d97642/ffffff?text=MH+Couture';
         
-        if (item.image_url && item.image_url !== 'NULL' && item.image_url !== '') {
-            if (item.image_url.startsWith('uploads/')) {
-                imageUrl = '/' + item.image_url;
-            } else if (item.image_url.startsWith('http')) {
-                imageUrl = item.image_url;
-            } else {
-                imageUrl = item.image_url;
+        if (img.image_url) {
+            // Si l'URL commence par uploads/, ajouter le slash
+            if (img.image_url.startsWith('uploads/')) {
+                imgSrc = '/' + img.image_url;
+            } 
+            // Si c'est une URL complète (http/https)
+            else if (img.image_url.startsWith('http')) {
+                imgSrc = img.image_url;
+            } 
+            // Sinon, utiliser tel quel
+            else {
+                imgSrc = img.image_url;
             }
-        } else {
-            imageUrl = `https://via.placeholder.com/400x500/d97642/ffffff?text=${encodeURIComponent(item.title || 'MH Couture')}`;
         }
         
-        // Ajouter aux images du lightbox
-        galleryImages.push({
-            src: imageUrl,
-            alt: item.title || 'Image',
-            title: item.title || 'Sans titre',
-            description: item.description || '',
-            category: item.category || ''
-        });
-        
         return `
-            <div class="gallery-item" data-category="${item.category || ''}">
-                <div class="image-container" onclick="openLightbox(${index})">
-                    <img src="${imageUrl}" 
-                         alt="${item.title || ''}" 
-                         loading="lazy"
-                         onerror="this.src='https://via.placeholder.com/400x500/d97642/ffffff?text=Image+Non+Disponible'">
+            <div class="gallery-item" data-category="${img.category || ''}" data-index="${index}">
+                <div class="image-container">
+                    <img src="${imgSrc}" 
+                         alt="${img.title || 'Image'}" 
+                         onerror="this.src='https://via.placeholder.com/350x450/d97642/ffffff?text=Image+Non+Disponible'"
+                         loading="lazy">
                     <div class="overlay">
-                        <h3>${item.title || 'Sans titre'}</h3>
-                        <p>${item.description || getCategoryName(item.category)}</p>
-                        <button class="btn-view">👁️ Voir</button>
+                        <h3>${img.title || 'Sans titre'}</h3>
+                        <p>${img.description || 'Pas de description'}</p>
+                        <button class="btn-view" onclick="openLightbox(${index})">
+                            👁️ Voir en grand
+                        </button>
                     </div>
                 </div>
             </div>
         `;
     }).join('');
     
-    console.log(`✅ ${images.length} images affichées dans la galerie`);
+    console.log(`✅ ${images.length} images affichées`);
 }
 
-// Galerie par défaut
-function displayDefaultGallery() {
-    const galleryGrid = document.getElementById('galleryGrid');
-    if (!galleryGrid) return;
-    
-    console.log('🎨 Affichage galerie par défaut');
-    
-    galleryImages = [];
-    
-    const defaultImages = [
-        {
-            title: 'Costume Trois Pièces Élégant',
-            description: 'Costume complet brodé raffiné',
-            category: 'homme',
-            src: 'https://via.placeholder.com/400x500/2c3e50/ffffff?text=Costume+Homme'
-        },
-        {
-            title: 'Robe de Soirée Brodée',
-            description: 'Robe élégante avec détails raffinés',
-            category: 'femme',
-            src: 'https://via.placeholder.com/400x500/e74c3c/ffffff?text=Robe+Femme'
-        },
-        {
-            title: 'Ensemble Traditionnel',
-            description: 'Tenue traditionnelle africaine',
-            category: 'traditionnel',
-            src: 'https://via.placeholder.com/400x500/f39c12/ffffff?text=Traditionnel'
-        },
-        {
-            title: 'Caftan de Luxe',
-            description: 'Caftan luxueux fait main',
-            category: 'femme',
-            src: 'https://via.placeholder.com/400x500/9b59b6/ffffff?text=Caftan'
-        },
-        {
-            title: 'Costume Mariage',
-            description: 'Costume élégant pour mariage',
-            category: 'mariage',
-            src: 'https://via.placeholder.com/400x500/16a085/ffffff?text=Mariage'
-        },
-        {
-            title: 'Robe Traditionnelle',
-            description: 'Robe avec motifs traditionnels',
-            category: 'traditionnel',
-            src: 'https://via.placeholder.com/400x500/d35400/ffffff?text=Traditionnel'
-        },
-        {
-            title: 'Ensemble Enfant',
-            description: 'Tenue élégante pour enfant',
-            category: 'enfant',
-            src: 'https://via.placeholder.com/400x500/27ae60/ffffff?text=Enfant'
-        },
-        {
-            title: 'Costume Sur Mesure',
-            description: 'Costume personnalisé haute couture',
-            category: 'homme',
-            src: 'https://via.placeholder.com/400x500/3498db/ffffff?text=Sur+Mesure'
-        }
-    ];
-    
-    galleryImages = defaultImages;
-    
-    galleryGrid.innerHTML = defaultImages.map((item, index) => `
-        <div class="gallery-item" data-category="${item.category}">
-            <div class="image-container" onclick="openLightbox(${index})">
-                <img src="${item.src}" alt="${item.title}" loading="lazy">
-                <div class="overlay">
-                    <h3>${item.title}</h3>
-                    <p>${item.description}</p>
-                    <button class="btn-view">👁️ Voir</button>
-                </div>
-            </div>
-        </div>
-    `).join('');
-    
-    console.log('✅ Galerie par défaut affichée');
-}
-
-// Filtres
+// ===============================
+// FILTRES
+// ===============================
 function setupFilters() {
     const filterButtons = document.querySelectorAll('.filter-btn');
     
-    filterButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            filterButtons.forEach(btn => btn.classList.remove('active'));
-            this.classList.add('active');
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Retirer active de tous les boutons
+            filterButtons.forEach(b => b.classList.remove('active'));
             
-            const filter = this.dataset.filter;
+            // Ajouter active au bouton cliqué
+            btn.classList.add('active');
+            
+            // Filtrer
+            const filter = btn.dataset.filter;
             filterGallery(filter);
         });
     });
 }
 
-function filterGallery(filter) {
-    const galleryItems = document.querySelectorAll('.gallery-item');
-    
-    console.log(`🔍 Filtrage par: ${filter}`);
-    
-    galleryItems.forEach(item => {
-        if (filter === 'all') {
-            item.style.display = 'block';
-            item.style.animation = 'fadeIn 0.5s ease';
-        } else if (item.dataset.category === filter) {
-            item.style.display = 'block';
-            item.style.animation = 'fadeIn 0.5s ease';
-        } else {
-            item.style.display = 'none';
-        }
-    });
+function filterGallery(category) {
+    if (category === 'all') {
+        displayGallery(allGalleryImages);
+    } else {
+        const filtered = allGalleryImages.filter(img => img.category === category);
+        displayGallery(filtered);
+    }
 }
 
-// Lightbox
-function setupLightbox() {
-    const lightbox = document.getElementById('lightbox');
-    if (!lightbox) return;
-    
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && lightbox.classList.contains('active')) {
-            closeLightbox();
-        } else if (e.key === 'ArrowLeft' && lightbox.classList.contains('active')) {
-            changeLightboxImage(-1);
-        } else if (e.key === 'ArrowRight' && lightbox.classList.contains('active')) {
-            changeLightboxImage(1);
-        }
-    });
-    
-    lightbox.addEventListener('click', function(e) {
-        if (e.target === lightbox) closeLightbox();
-    });
-}
-
+// ===============================
+// LIGHTBOX
+// ===============================
 function openLightbox(index) {
-    if (index < 0 || index >= galleryImages.length) return;
-    
-    currentLightboxIndex = index;
-    const image = galleryImages[index];
-    
+    currentImageIndex = index;
     const lightbox = document.getElementById('lightbox');
     const lightboxImage = document.getElementById('lightboxImage');
     const lightboxCaption = document.getElementById('lightboxCaption');
     
-    if (!lightbox || !lightboxImage || !lightboxCaption) return;
+    if (!lightbox || !lightboxImage) {
+        console.error('❌ Lightbox non trouvé');
+        return;
+    }
     
-    lightboxImage.src = image.src;
-    lightboxImage.alt = image.alt || image.title;
-    lightboxCaption.innerHTML = `
-        <strong>${image.title}</strong><br>
-        ${image.description}
-    `;
+    const img = allGalleryImages[index];
+    
+    // ✅ CORRECTION : Gérer le chemin de l'image dans la lightbox
+    let imgSrc = 'https://via.placeholder.com/800x600/d97642/ffffff?text=MH+Couture';
+    
+    if (img.image_url) {
+        if (img.image_url.startsWith('uploads/')) {
+            imgSrc = '/' + img.image_url;
+        } else if (img.image_url.startsWith('http')) {
+            imgSrc = img.image_url;
+        } else {
+            imgSrc = img.image_url;
+        }
+    }
+    
+    lightboxImage.src = imgSrc;
+    
+    if (lightboxCaption) {
+        lightboxCaption.textContent = img.title || 'Image';
+    }
     
     lightbox.classList.add('active');
+    
+    // Empêcher le scroll du body
     document.body.style.overflow = 'hidden';
 }
 
@@ -315,65 +177,117 @@ function closeLightbox() {
     const lightbox = document.getElementById('lightbox');
     if (lightbox) {
         lightbox.classList.remove('active');
-        document.body.style.overflow = 'auto';
     }
+    
+    // Réactiver le scroll
+    document.body.style.overflow = 'auto';
 }
 
 function changeLightboxImage(direction) {
-    currentLightboxIndex += direction;
+    currentImageIndex += direction;
     
-    if (currentLightboxIndex < 0) {
-        currentLightboxIndex = galleryImages.length - 1;
-    } else if (currentLightboxIndex >= galleryImages.length) {
-        currentLightboxIndex = 0;
+    // Boucler
+    if (currentImageIndex < 0) {
+        currentImageIndex = allGalleryImages.length - 1;
+    } else if (currentImageIndex >= allGalleryImages.length) {
+        currentImageIndex = 0;
     }
     
-    openLightbox(currentLightboxIndex);
+    openLightbox(currentImageIndex);
 }
 
-// Utilitaires
-function getCategoryName(category) {
-    if (!category) return 'Création';
+// Fermer lightbox avec Escape
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        closeLightbox();
+    } else if (e.key === 'ArrowLeft') {
+        changeLightboxImage(-1);
+    } else if (e.key === 'ArrowRight') {
+        changeLightboxImage(1);
+    }
+});
+
+// ===============================
+// COMPTEUR PANIER
+// ===============================
+function updateCartCount() {
+    const token = window.authToken || localStorage.getItem('authToken');
     
-    const categories = {
-        'homme': 'Homme',
-        'femme': 'Femme',
-        'enfant': 'Enfant',
-        'mariage': 'Mariage',
-        'traditionnel': 'Traditionnel'
-    };
-    return categories[category.toLowerCase()] || category;
+    if (!token) return;
+    
+    fetch('php/api/cart.php?action=count&token=' + encodeURIComponent(token))
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const cartCount = document.querySelector('.cart-count');
+                if (cartCount) {
+                    cartCount.textContent = data.count || 0;
+                }
+            }
+        })
+        .catch(err => console.error('❌ Erreur compteur panier:', err));
 }
 
-function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return null;
+// ===============================
+// NOTIFICATIONS
+// ===============================
+function showSuccess(message) {
+    notify('✅ ' + message, '#27ae60');
 }
 
-// Animations CSS
+function showError(message) {
+    notify('❌ ' + message, '#e74c3c');
+}
+
+function notify(text, bg) {
+    const n = document.createElement('div');
+    n.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${bg};
+        color: white;
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        z-index: 10000;
+        font-weight: 600;
+        animation: slideIn 0.3s ease;
+    `;
+    n.textContent = text;
+    
+    document.body.appendChild(n);
+    
+    setTimeout(() => {
+        n.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => n.remove(), 300);
+    }, 3000);
+}
+
+// Animations
 const style = document.createElement('style');
 style.textContent = `
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    @keyframes slideIn {
+        from { transform: translateX(400px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
     }
-    
-    .loading, .no-data {
+    @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(400px); opacity: 0; }
+    }
+    .loading {
         text-align: center;
         padding: 60px 20px;
         font-size: 18px;
         color: #666;
-        grid-column: 1 / -1;
+    }
+    .no-data {
+        text-align: center;
+        padding: 60px 20px;
+        font-size: 18px;
+        color: #999;
     }
 `;
 document.head.appendChild(style);
 
-console.log('✅ Gallery.js chargé avec succès');
+console.log('✅ gallery.js chargé avec succès');
