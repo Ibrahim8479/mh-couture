@@ -185,8 +185,7 @@ if (!$token) {
             <div class="container">
                 <h2>Notre Emplacement</h2>
                 <div class="map-placeholder">
-                    <p>🗺️ Carte Google Maps</p>
-                    <p class="map-note">(Intégrez ici votre carte Google Maps avec votre adresse)</p>
+                    <img src="../images/image.png" alt="Carte de notre emplacement">
                 </div>
             </div>
         </section>
