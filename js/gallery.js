@@ -68,7 +68,7 @@ function displayGallery(images) {
         if (img.image_url) {
             // Si l'URL commence par uploads/, ajouter le slash
             if (img.image_url.startsWith('uploads/')) {
-                imgSrc = '/' + img.image_url;
+                imgSrc = img.image_url;
             } 
             // Si c'est une URL complète (http/https)
             else if (img.image_url.startsWith('http')) {
@@ -153,7 +153,7 @@ function openLightbox(index) {
     
     if (img.image_url) {
         if (img.image_url.startsWith('uploads/')) {
-            imgSrc = '/' + img.image_url;
+            imgSrc = img.image_url;
         } else if (img.image_url.startsWith('http')) {
             imgSrc = img.image_url;
         } else {

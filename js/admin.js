@@ -177,7 +177,7 @@ function displayProducts(products) {
         if (p.image_url) {
             // Si l'URL commence par uploads/, ajouter le slash
             if (p.image_url.startsWith('uploads/')) {
-                imgSrc = '/' + p.image_url;
+                imgSrc = p.image_url;
             } 
             // Si c'est une URL complète
             else if (p.image_url.startsWith('http')) {
@@ -240,7 +240,7 @@ function displayProductsGrid(products) {
         
         if (product.image_url) {
             if (product.image_url.startsWith('uploads/')) {
-                imgSrc = '/' + product.image_url;
+                imgSrc = product.image_url;
             } else if (product.image_url.startsWith('http')) {
                 imgSrc = product.image_url;
             } else {
@@ -452,7 +452,7 @@ function displayGalleryAdmin(images) {
         
         if (img.image_url) {
             if (img.image_url.startsWith('uploads/')) {
-                imgSrc = '/' + img.image_url;
+                imgSrc = img.image_url;
             } else if (img.image_url.startsWith('http')) {
                 imgSrc = img.image_url;
             } else {
