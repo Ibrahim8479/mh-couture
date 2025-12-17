@@ -1,8 +1,9 @@
-// gallery.js - VERSION FINALE avec API Gallery
+// gallery.js - VERSION CORRIGÉE ET FONCTIONNELLE
 let currentLightboxIndex = 0;
 let galleryImages = [];
 
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🖼️ Galerie chargée');
     checkUserLogin();
     updateCartCount();
     loadGalleryFromAPI();
@@ -37,36 +38,44 @@ function loadGalleryFromAPI() {
     const galleryGrid = document.getElementById('galleryGrid');
     
     if (!galleryGrid) {
-        console.error('galleryGrid non trouvé');
+        console.error('❌ galleryGrid non trouvé');
         return;
     }
     
-    galleryGrid.innerHTML = '<div class="loading">Chargement de la galerie...</div>';
+    galleryGrid.innerHTML = '<div class="loading" style="grid-column: 1/-1; text-align: center; padding: 60px;">⏳ Chargement de la galerie...</div>';
+    
+    console.log('📡 Chargement galerie depuis API...');
     
     fetch('php/api/gallery.php?action=getAll')
         .then(response => {
-            if (!response.ok) throw new Error('Erreur de chargement');
+            console.log('📡 Réponse status:', response.status);
+            if (!response.ok) throw new Error('Erreur de chargement: ' + response.status);
             return response.json();
         })
         .then(data => {
+            console.log('✅ Données reçues:', data);
             if (data.success && data.gallery && data.gallery.length > 0) {
+                console.log(`✅ ${data.gallery.length} images chargées`);
                 displayGallery(data.gallery);
             } else {
-                // Fallback aux produits si la galerie est vide
+                console.log('⚠️ Galerie vide, chargement depuis produits...');
                 loadFromProducts();
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
+            console.error('❌ Erreur:', error);
             loadFromProducts();
         });
 }
 
 // Fallback: charger depuis les produits
 function loadFromProducts() {
+    console.log('📦 Chargement depuis produits...');
+    
     fetch('php/api/products.php?action=getAll')
         .then(response => response.json())
         .then(data => {
+            console.log('📦 Produits reçus:', data);
             if (data.success && data.products && data.products.length > 0) {
                 const galleryData = data.products.map(p => ({
                     title: p.name,
@@ -75,28 +84,48 @@ function loadFromProducts() {
                     image_url: p.image_url,
                     is_featured: 0
                 }));
+                console.log(`✅ ${galleryData.length} produits convertis en galerie`);
                 displayGallery(galleryData);
             } else {
+                console.log('⚠️ Aucun produit, affichage galerie par défaut');
                 displayDefaultGallery();
             }
         })
-        .catch(() => displayDefaultGallery());
+        .catch((err) => {
+            console.error('❌ Erreur produits:', err);
+            displayDefaultGallery();
+        });
 }
 
 // Afficher la galerie
 function displayGallery(images) {
     const galleryGrid = document.getElementById('galleryGrid');
-    if (!galleryGrid) return;
+    if (!galleryGrid) {
+        console.error('❌ galleryGrid non trouvé');
+        return;
+    }
     
     galleryImages = [];
     
+    if (!images || images.length === 0) {
+        galleryGrid.innerHTML = '<div class="no-data" style="grid-column: 1/-1; text-align: center; padding: 60px; color: #666;">📷 Aucune image disponible</div>';
+        return;
+    }
+    
     galleryGrid.innerHTML = images.map((item, index) => {
         // Déterminer l'URL de l'image
-        let imageUrl = item.image_url;
-        if (!imageUrl || imageUrl === 'NULL' || imageUrl === '') {
+        let imageUrl = 'https://via.placeholder.com/400x500/d97642/ffffff?text=MH+Couture';
+        
+        if (item.image_url && item.image_url !== 'NULL' && item.image_url !== '') {
+            if (item.image_url.startsWith('uploads/')) {
+                imageUrl = '/' + item.image_url;
+            } else if (item.image_url.startsWith('http')) {
+                imageUrl = item.image_url;
+            } else {
+                imageUrl = item.image_url;
+            }
+        } else {
             imageUrl = `https://via.placeholder.com/400x500/d97642/ffffff?text=${encodeURIComponent(item.title || 'MH Couture')}`;
-        } else if (imageUrl.startsWith('uploads/')) {
-            imageUrl = '/' + imageUrl;
         }
         
         // Ajouter aux images du lightbox
@@ -105,30 +134,35 @@ function displayGallery(images) {
             alt: item.title || 'Image',
             title: item.title || 'Sans titre',
             description: item.description || '',
-            category: item.category
+            category: item.category || ''
         });
         
         return `
-            <div class="gallery-item" data-category="${item.category}">
+            <div class="gallery-item" data-category="${item.category || ''}">
                 <div class="image-container" onclick="openLightbox(${index})">
                     <img src="${imageUrl}" 
                          alt="${item.title || ''}" 
-                         onerror="this.src='https://via.placeholder.com/400x500/d97642/ffffff?text=MH+Couture'">
+                         loading="lazy"
+                         onerror="this.src='https://via.placeholder.com/400x500/d97642/ffffff?text=Image+Non+Disponible'">
                     <div class="overlay">
                         <h3>${item.title || 'Sans titre'}</h3>
                         <p>${item.description || getCategoryName(item.category)}</p>
-                        <button class="btn-view">Voir</button>
+                        <button class="btn-view">👁️ Voir</button>
                     </div>
                 </div>
             </div>
         `;
     }).join('');
+    
+    console.log(`✅ ${images.length} images affichées dans la galerie`);
 }
 
 // Galerie par défaut
 function displayDefaultGallery() {
     const galleryGrid = document.getElementById('galleryGrid');
     if (!galleryGrid) return;
+    
+    console.log('🎨 Affichage galerie par défaut');
     
     galleryImages = [];
     
@@ -188,15 +222,17 @@ function displayDefaultGallery() {
     galleryGrid.innerHTML = defaultImages.map((item, index) => `
         <div class="gallery-item" data-category="${item.category}">
             <div class="image-container" onclick="openLightbox(${index})">
-                <img src="${item.src}" alt="${item.title}">
+                <img src="${item.src}" alt="${item.title}" loading="lazy">
                 <div class="overlay">
                     <h3>${item.title}</h3>
                     <p>${item.description}</p>
-                    <button class="btn-view">Voir</button>
+                    <button class="btn-view">👁️ Voir</button>
                 </div>
             </div>
         </div>
     `).join('');
+    
+    console.log('✅ Galerie par défaut affichée');
 }
 
 // Filtres
@@ -216,6 +252,8 @@ function setupFilters() {
 
 function filterGallery(filter) {
     const galleryItems = document.querySelectorAll('.gallery-item');
+    
+    console.log(`🔍 Filtrage par: ${filter}`);
     
     galleryItems.forEach(item => {
         if (filter === 'all') {
@@ -328,7 +366,7 @@ style.textContent = `
         }
     }
     
-    .loading {
+    .loading, .no-data {
         text-align: center;
         padding: 60px 20px;
         font-size: 18px;
@@ -337,3 +375,5 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+console.log('✅ Gallery.js chargé avec succès');

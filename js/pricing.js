@@ -1,12 +1,13 @@
-// pricing.js - CORRIGÉ avec données réelles
+// pricing.js - VERSION CORRIGÉE ET FONCTIONNELLE
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('💰 Page tarifs chargée');
     checkUserLogin();
     loadPricingData();
     setupCategoryFilters();
 });
 
 function checkUserLogin() {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || getCookie('auth_token');
     const userIcon = document.getElementById('userIcon');
     
     if (token && userIcon) {
@@ -23,24 +24,33 @@ function loadPricingData() {
     const pricingGrid = document.getElementById('pricingGrid');
     
     if (!pricingGrid) {
-        console.error('pricingGrid non trouvé');
+        console.error('❌ pricingGrid non trouvé');
         return;
     }
     
-    pricingGrid.innerHTML = '<div class="loading">Chargement des tarifs...</div>';
+    pricingGrid.innerHTML = '<div class="loading" style="grid-column: 1/-1; text-align: center; padding: 60px;">⏳ Chargement des tarifs...</div>';
+    
+    console.log('📡 Chargement tarifs depuis API...');
     
     // Essayer de charger depuis l'API
     fetch('php/api/products.php?action=getAll')
-        .then(response => response.json())
+        .then(response => {
+            console.log('📡 Réponse status:', response.status);
+            if (!response.ok) throw new Error('Erreur HTTP: ' + response.status);
+            return response.json();
+        })
         .then(data => {
+            console.log('✅ Données reçues:', data);
             if (data.success && data.products && data.products.length > 0) {
+                console.log(`✅ ${data.products.length} produits chargés`);
                 displayPricingFromProducts(data.products);
             } else {
+                console.log('⚠️ Aucun produit, affichage tarifs par défaut');
                 displayDefaultPricing();
             }
         })
         .catch(error => {
-            console.error('Erreur chargement tarifs:', error);
+            console.error('❌ Erreur chargement tarifs:', error);
             displayDefaultPricing();
         });
 }
@@ -48,6 +58,11 @@ function loadPricingData() {
 // Afficher les tarifs depuis les produits
 function displayPricingFromProducts(products) {
     const pricingGrid = document.getElementById('pricingGrid');
+    
+    if (!pricingGrid) {
+        console.error('❌ pricingGrid non trouvé');
+        return;
+    }
     
     // Regrouper par catégorie et prendre des exemples
     const groupedProducts = {
@@ -57,6 +72,7 @@ function displayPricingFromProducts(products) {
     };
     
     let html = '';
+    let totalCards = 0;
     
     for (const [category, items] of Object.entries(groupedProducts)) {
         items.forEach(product => {
@@ -65,7 +81,7 @@ function displayPricingFromProducts(products) {
             
             html += `
                 <div class="pricing-card ${isFeatured ? 'featured' : ''}" data-category="${category}">
-                    ${isFeatured ? '<span class="badge">Populaire</span>' : ''}
+                    ${isFeatured ? '<span class="badge">⭐ Populaire</span>' : ''}
                     <div class="card-header">
                         <h3>${product.name}</h3>
                         <div class="price">
@@ -86,19 +102,29 @@ function displayPricingFromProducts(products) {
                     </div>
                 </div>
             `;
+            totalCards++;
         });
     }
     
-    if (html === '') {
+    if (html === '' || totalCards === 0) {
+        console.log('⚠️ Aucune carte générée, affichage tarifs par défaut');
         displayDefaultPricing();
     } else {
         pricingGrid.innerHTML = html;
+        console.log(`✅ ${totalCards} cartes de tarifs affichées`);
     }
 }
 
 // Tarifs par défaut si pas de produits
 function displayDefaultPricing() {
     const pricingGrid = document.getElementById('pricingGrid');
+    
+    if (!pricingGrid) {
+        console.error('❌ pricingGrid non trouvé');
+        return;
+    }
+    
+    console.log('🎨 Affichage tarifs par défaut');
     
     const defaultPricing = [
         // HOMME
@@ -280,7 +306,7 @@ function displayDefaultPricing() {
     
     pricingGrid.innerHTML = defaultPricing.map(item => `
         <div class="pricing-card ${item.featured ? 'featured' : ''}" data-category="${item.category}">
-            ${item.featured ? '<span class="badge">Populaire</span>' : ''}
+            ${item.featured ? '<span class="badge">⭐ Populaire</span>' : ''}
             <div class="card-header">
                 <h3>${item.name}</h3>
                 <div class="price">
@@ -296,11 +322,18 @@ function displayDefaultPricing() {
             </div>
         </div>
     `).join('');
+    
+    console.log(`✅ ${defaultPricing.length} cartes de tarifs par défaut affichées`);
 }
 
 // Configuration des filtres de catégorie
 function setupCategoryFilters() {
     const filterButtons = document.querySelectorAll('.category-btn');
+    
+    if (!filterButtons.length) {
+        console.warn('⚠️ Aucun bouton de filtre trouvé');
+        return;
+    }
     
     filterButtons.forEach(button => {
         button.addEventListener('click', function() {
@@ -311,28 +344,46 @@ function setupCategoryFilters() {
             filterPricing(category);
         });
     });
+    
+    console.log('✅ Filtres de catégorie configurés');
 }
 
 // Filtrer les tarifs par catégorie
 function filterPricing(category) {
     const pricingCards = document.querySelectorAll('.pricing-card');
     
+    console.log(`🔍 Filtrage par catégorie: ${category}`);
+    
+    let visibleCount = 0;
+    
     pricingCards.forEach(card => {
         if (category === 'all') {
             card.style.display = 'block';
             card.style.animation = 'fadeIn 0.5s';
+            visibleCount++;
         } else if (card.dataset.category === category) {
             card.style.display = 'block';
             card.style.animation = 'fadeIn 0.5s';
+            visibleCount++;
         } else {
             card.style.display = 'none';
         }
     });
+    
+    console.log(`✅ ${visibleCount} cartes visibles après filtrage`);
 }
 
 // Formater le prix
 function formatPrice(price) {
     return parseInt(price).toLocaleString('fr-FR');
+}
+
+// Fonction getCookie
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
 }
 
 // Ajouter les animations CSS
@@ -356,5 +407,16 @@ style.textContent = `
         color: #666;
         grid-column: 1 / -1;
     }
+    
+    .pricing-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .pricing-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
 `;
 document.head.appendChild(style);
+
+console.log('✅ Pricing.js chargé avec succès');
