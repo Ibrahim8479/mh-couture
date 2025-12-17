@@ -306,4 +306,6 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-console.log('✅ collections.js chargé avec succès');
+console.log('✅ collections.js chargé avec succès');// ===============================
+// CUSTOM-DESIGNS.JS
+// MH Couture - Notifications personnalisées
