@@ -352,6 +352,12 @@ function filterGalleryAdmin() {
 }
 
 // ===============================
+// ADMIN.JS - COMMANDES SUR MESURE
+// Version corrigée alignée avec la DB
+// Ajoutez ce code à votre admin.js existant
+// ===============================
+
+// ===============================
 // COMMANDES SUR MESURE - CORRECTION
 // ===============================
 function loadCustomOrders() {
@@ -388,7 +394,7 @@ function loadCustomOrders() {
         })
         .catch(err => {
             console.error('❌ Erreur:', err);
-            showCustomOrdersError('API custom-orders.php non disponible. Veuillez créer ce fichier.');
+            showCustomOrdersError('Erreur de connexion: ' + err.message);
         });
 }
 
@@ -404,16 +410,16 @@ function displayCustomOrders(orders) {
     tbody.innerHTML = orders.map(order => `
         <tr>
             <td>${order.order_number || 'N/A'}</td>
-            <td>${order.full_name || order.customer_name || 'N/A'}</td>
-            <td>${order.garment_type || order.type || 'N/A'}</td>
+            <td>${order.customer_name || order.full_name || 'N/A'}</td>
+            <td>${order.type || order.garment_type || 'N/A'}</td>
             <td>${getCategoryName(order.category)}</td>
             <td>${Number(order.budget || 0).toLocaleString('fr-FR')} FCFA</td>
-            <td><span class="status-badge status-${order.status || 'pending'}">${getStatusLabel(order.status || 'pending')}</span></td>
+            <td><span class="status-badge status-${order.status || 'pending'}">${getCustomOrderStatusLabel(order.status || 'pending')}</span></td>
             <td>${formatDate(order.created_at)}</td>
             <td>
                 <div class="action-btns">
                     <button class="btn-view" onclick="viewCustomOrder(${order.id})">👁️ Voir</button>
-                    <button class="btn-edit" onclick="updateCustomOrderStatus(${order.id})">📝 Statut</button>
+                    <button class="btn-edit" onclick="updateCustomOrderStatus(${order.id}, '${order.status}')">📝 Statut</button>
                 </div>
             </td>
         </tr>
@@ -430,16 +436,210 @@ function showCustomOrdersError(message) {
 }
 
 function viewCustomOrder(id) {
-    showSuccess(`Vue de la commande ${id} - Fonctionnalité à implémenter`);
-}
-
-function updateCustomOrderStatus(id) {
-    const newStatus = prompt('Nouveau statut (pending/processing/completed/cancelled):');
-    if (newStatus) {
-        showSuccess(`Statut de la commande ${id} mis à jour vers: ${newStatus}`);
+    const order = allCustomOrders.find(o => o.id === id);
+    if (!order) {
+        showError('Commande non trouvée');
+        return;
     }
+    
+    // Créer le modal de détails
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.style.display = 'flex';
+    
+    const images = order.images || (order.reference_images ? JSON.parse(order.reference_images) : []);
+    const imagesHtml = images.length > 0 
+        ? `<div style="margin-top: 15px;">
+            <strong>Images de référence:</strong><br>
+            ${images.map(img => `<span style="display: inline-block; margin: 5px; padding: 5px 10px; background: #f0f0f0; border-radius: 4px;">${img}</span>`).join('')}
+           </div>`
+        : '';
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2>Détails de la commande ${order.order_number}</h2>
+                <button class="close-btn" onclick="this.closest('.modal').remove()">✕</button>
+            </div>
+            <div style="padding: 25px; max-height: 70vh; overflow-y: auto;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <p><strong>Client:</strong> ${order.customer_name || order.full_name}</p>
+                        <p><strong>Email:</strong> ${order.customer_email || order.email}</p>
+                        <p><strong>Téléphone:</strong> ${order.customer_phone || order.phone}</p>
+                        <p><strong>Type de vêtement:</strong> ${order.type || order.garment_type}</p>
+                    </div>
+                    <div>
+                        <p><strong>Catégorie:</strong> ${getCategoryName(order.category)}</p>
+                        <p><strong>Occasion:</strong> ${order.occasion || 'Non spécifié'}</p>
+                        <p><strong>Budget:</strong> ${Number(order.budget || 0).toLocaleString('fr-FR')} FCFA</p>
+                        <p><strong>Date limite:</strong> ${order.deadline || 'Non spécifié'}</p>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <strong>Description:</strong>
+                    <p style="margin-top: 8px; padding: 12px; background: #f8f9fa; border-radius: 6px; line-height: 1.6;">
+                        ${order.description || 'Pas de description'}
+                    </p>
+                </div>
+                
+                <div style="margin-top: 15px;">
+                    <p><strong>Mesures disponibles:</strong> ${order.has_measurements === 'yes' ? '✅ Oui' : '❌ Non'}</p>
+                </div>
+                
+                ${imagesHtml}
+                
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+                    <p><strong>Statut:</strong> <span class="status-badge status-${order.status}">${getCustomOrderStatusLabel(order.status)}</span></p>
+                    <p style="margin-top: 10px;"><strong>Date de création:</strong> ${formatDate(order.created_at)}</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="this.closest('.modal').remove()">Fermer</button>
+                <button class="btn-primary" onclick="updateCustomOrderStatus(${order.id}, '${order.status}'); this.closest('.modal').remove();">
+                    Modifier le statut
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Fermer en cliquant à l'extérieur
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
 }
 
+function updateCustomOrderStatus(orderId, currentStatus) {
+    const token = getAuthToken();
+    if (!token) {
+        showError('Non authentifié');
+        return;
+    }
+    
+    // Statuts disponibles selon la base de données
+    const statuses = [
+        { value: 'pending', label: 'En attente' },
+        { value: 'confirmed', label: 'Confirmée' },
+        { value: 'in_progress', label: 'En cours' },
+        { value: 'completed', label: 'Terminée' },
+        { value: 'cancelled', label: 'Annulée' }
+    ];
+    
+    // Créer le modal de sélection
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.style.display = 'flex';
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Modifier le statut</h2>
+                <button class="close-btn" onclick="this.closest('.modal').remove()">✕</button>
+            </div>
+            <div style="padding: 25px;">
+                <p style="margin-bottom: 15px; color: #666;">Sélectionnez le nouveau statut de la commande :</p>
+                <select id="newStatus" class="form-control" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+                    ${statuses.map(s => `
+                        <option value="${s.value}" ${s.value === currentStatus ? 'selected' : ''}>
+                            ${s.label}
+                        </option>
+                    `).join('')}
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="this.closest('.modal').remove()">Annuler</button>
+                <button class="btn-primary" onclick="saveCustomOrderStatus(${orderId}, this.closest('.modal'))">
+                    Enregistrer
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function saveCustomOrderStatus(orderId, modal) {
+    const newStatus = document.getElementById('newStatus').value;
+    const token = getAuthToken();
+    
+    if (!token) {
+        showError('Non authentifié');
+        return;
+    }
+    
+    fetch('php/api/custom-orders.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            action: 'updateCustomOrderStatus',
+            token: token,
+            order_id: orderId,
+            status: newStatus
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showSuccess('✅ Statut mis à jour avec succès');
+            modal.remove();
+            loadCustomOrders(); // Recharger la liste
+        } else {
+            showError(data.message || 'Erreur lors de la mise à jour');
+        }
+    })
+    .catch(err => {
+        console.error('❌ Erreur:', err);
+        showError('Erreur de connexion');
+    });
+}
+
+function getCustomOrderStatusLabel(status) {
+    const labels = {
+        'pending': 'En attente',
+        'confirmed': 'Confirmée',
+        'in_progress': 'En cours',
+        'completed': 'Terminée',
+        'cancelled': 'Annulée'
+    };
+    return labels[status] || status;
+}
+
+// Styles CSS à ajouter
+const customOrderStyles = document.createElement('style');
+customOrderStyles.textContent = `
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.3s ease;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #d97642;
+        box-shadow: 0 0 0 3px rgba(217, 118, 66, 0.1);
+    }
+    
+    .status-confirmed {
+        background: #cfe2ff;
+        color: #084298;
+    }
+    
+    .status-in_progress {
+        background: #fff3cd;
+        color: #997404;
+    }
+`;
+document.head.appendChild(customOrderStyles);
+
+console.log('✅ Module Commandes Sur Mesure chargé et corrigé');
 // =============================== 
 // FIN DE LA PARTIE 1/2
 // Continuez avec la PARTIE 2/2

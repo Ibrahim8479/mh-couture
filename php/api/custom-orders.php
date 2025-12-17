@@ -2,6 +2,7 @@
 /**
  * API Commandes Sur Mesure - MH Couture
  * Fichier: php/api/custom-orders.php
+ * VERSION ALIGNÉE AVEC LA BASE DE DONNÉES
  */
 
 require_once __DIR__ . '/../config/database.php';
@@ -9,8 +10,11 @@ require_once __DIR__ . '/../includes/functions.php';
 
 setJSONHeaders();
 
-$action = $_GET['action'] ?? $_POST['action'] ?? '';
-$input = getJSONInput();
+$action = $_GET['action'] ?? '';
+if (empty($action)) {
+    $input = getJSONInput();
+    $action = $input['action'] ?? '';
+}
 
 // RÉCUPÉRER TOUTES LES COMMANDES SUR MESURE (ADMIN)
 if ($action === 'getAllCustomOrders') {
@@ -31,16 +35,42 @@ if ($action === 'getAllCustomOrders') {
         
         $stmt = $conn->query("
             SELECT 
-                co.*,
-                CONCAT(u.first_name, ' ', u.last_name) as customer_name,
-                u.email as customer_email,
-                u.phone as customer_phone
-            FROM custom_orders co
-            LEFT JOIN users u ON co.user_id = u.id
-            ORDER BY co.created_at DESC
+                id,
+                order_number,
+                full_name as customer_name,
+                email as customer_email,
+                phone as customer_phone,
+                garment_type as type,
+                category,
+                occasion,
+                budget,
+                description,
+                has_measurements,
+                deadline,
+                reference_images,
+                status,
+                created_at,
+                updated_at
+            FROM custom_orders
+            ORDER BY created_at DESC
         ");
         
-        $orders = $stmt->fetchAll();
+        $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Formater les données
+        foreach ($orders as &$order) {
+            // S'assurer que le statut est correct
+            if (empty($order['status'])) {
+                $order['status'] = 'pending';
+            }
+            
+            // Convertir les images JSON
+            if (!empty($order['reference_images'])) {
+                $order['images'] = json_decode($order['reference_images'], true);
+            } else {
+                $order['images'] = [];
+            }
+        }
         
         sendJSONResponse([
             'success' => true,
@@ -75,14 +105,15 @@ elseif ($action === 'getUserCustomOrders') {
             throw new Exception('Erreur de connexion');
         }
         
+        // Rechercher par email puisque la table n'a pas de user_id
         $stmt = $conn->prepare("
             SELECT *
             FROM custom_orders
-            WHERE user_id = ?
+            WHERE email = ?
             ORDER BY created_at DESC
         ");
-        $stmt->execute([$user['id']]);
-        $orders = $stmt->fetchAll();
+        $stmt->execute([$user['email']]);
+        $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         sendJSONResponse([
             'success' => true,
@@ -100,36 +131,42 @@ elseif ($action === 'getUserCustomOrders') {
 
 // CRÉER UNE COMMANDE SUR MESURE
 elseif ($action === 'createCustomOrder') {
-    $token = $input['token'] ?? '';
+    $input = getJSONInput();
     
-    $user = getUserIdFromToken($token);
-    
-    if (!$user) {
-        sendJSONResponse([
-            'success' => false,
-            'message' => 'Non authentifié'
-        ], 401);
-    }
-    
-    // Récupérer les données
-    $full_name = sanitizeInput($input['full_name'] ?? '');
+    // Récupérer les données avec les deux formats possibles
+    $full_name = sanitizeInput($input['fullName'] ?? $input['full_name'] ?? '');
     $email = sanitizeInput($input['email'] ?? '');
     $phone = sanitizeInput($input['phone'] ?? '');
-    $garment_type = sanitizeInput($input['garment_type'] ?? '');
+    $garment_type = sanitizeInput($input['garmentType'] ?? $input['garment_type'] ?? '');
     $category = sanitizeInput($input['category'] ?? '');
-    $fabric_type = sanitizeInput($input['fabric_type'] ?? '');
-    $color = sanitizeInput($input['color'] ?? '');
-    $design_details = sanitizeInput($input['design_details'] ?? '');
-    $measurements = json_encode($input['measurements'] ?? []);
+    $occasion = sanitizeInput($input['occasion'] ?? '');
     $budget = floatval($input['budget'] ?? 0);
+    $description = sanitizeInput($input['description'] ?? '');
+    $has_measurements = sanitizeInput($input['hasMeasurements'] ?? $input['has_measurements'] ?? 'no');
     $deadline = sanitizeInput($input['deadline'] ?? '');
-    $additional_notes = sanitizeInput($input['additional_notes'] ?? '');
+    $reference_images = isset($input['images']) ? json_encode($input['images']) : '[]';
     
     // Validation
-    if (empty($full_name) || empty($email) || empty($phone) || empty($garment_type)) {
+    if (empty($full_name) || empty($email) || empty($phone) || empty($garment_type) || empty($description)) {
         sendJSONResponse([
             'success' => false,
             'message' => 'Informations requises manquantes'
+        ], 400);
+    }
+    
+    if (empty($category)) {
+        sendJSONResponse([
+            'success' => false,
+            'message' => 'Catégorie requise'
+        ], 400);
+    }
+    
+    // Valider la catégorie
+    $valid_categories = ['homme', 'femme', 'enfant'];
+    if (!in_array($category, $valid_categories)) {
+        sendJSONResponse([
+            'success' => false,
+            'message' => 'Catégorie invalide'
         ], 400);
     }
     
@@ -139,33 +176,41 @@ elseif ($action === 'createCustomOrder') {
             throw new Exception('Erreur de connexion');
         }
         
-        // Générer un numéro de commande
-        $order_number = 'CO-' . date('Ymd') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+        // Générer un numéro de commande unique
+        $order_number = 'CMD-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
         
         $stmt = $conn->prepare("
             INSERT INTO custom_orders (
-                user_id, order_number, full_name, email, phone,
-                garment_type, category, fabric_type, color,
-                design_details, measurements, budget, deadline,
-                additional_notes, status, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())
+                order_number, 
+                full_name, 
+                email, 
+                phone,
+                garment_type, 
+                category, 
+                occasion, 
+                budget, 
+                description,
+                has_measurements, 
+                deadline, 
+                reference_images,
+                status, 
+                created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())
         ");
         
         $stmt->execute([
-            $user['id'],
             $order_number,
             $full_name,
             $email,
             $phone,
             $garment_type,
             $category,
-            $fabric_type,
-            $color,
-            $design_details,
-            $measurements,
+            $occasion,
             $budget,
-            $deadline,
-            $additional_notes
+            $description,
+            $has_measurements,
+            $deadline ? $deadline : null,
+            $reference_images
         ]);
         
         sendJSONResponse([
@@ -179,7 +224,7 @@ elseif ($action === 'createCustomOrder') {
         logError("Erreur createCustomOrder: " . $e->getMessage());
         sendJSONResponse([
             'success' => false,
-            'message' => 'Erreur lors de la création'
+            'message' => 'Erreur lors de la création: ' . $e->getMessage()
         ], 500);
     }
 }
@@ -191,7 +236,7 @@ elseif ($action === 'getCustomOrderDetails') {
     
     $user = getUserIdFromToken($token);
     
-    if (!$user) {
+    if (!$user && !isAdmin($token)) {
         sendJSONResponse([
             'success' => false,
             'message' => 'Non authentifié'
@@ -204,16 +249,16 @@ elseif ($action === 'getCustomOrderDetails') {
             throw new Exception('Erreur de connexion');
         }
         
-        // Vérifier si admin ou propriétaire
+        // Vérifier si admin ou propriétaire (par email)
         if (isAdmin($token)) {
             $stmt = $conn->prepare("SELECT * FROM custom_orders WHERE id = ?");
             $stmt->execute([$order_id]);
         } else {
-            $stmt = $conn->prepare("SELECT * FROM custom_orders WHERE id = ? AND user_id = ?");
-            $stmt->execute([$order_id, $user['id']]);
+            $stmt = $conn->prepare("SELECT * FROM custom_orders WHERE id = ? AND email = ?");
+            $stmt->execute([$order_id, $user['email']]);
         }
         
-        $order = $stmt->fetch();
+        $order = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$order) {
             sendJSONResponse([
@@ -222,9 +267,11 @@ elseif ($action === 'getCustomOrderDetails') {
             ], 404);
         }
         
-        // Décoder les mesures JSON
-        if ($order['measurements']) {
-            $order['measurements'] = json_decode($order['measurements'], true);
+        // Décoder les images JSON
+        if (!empty($order['reference_images'])) {
+            $order['images'] = json_decode($order['reference_images'], true);
+        } else {
+            $order['images'] = [];
         }
         
         sendJSONResponse([
@@ -243,6 +290,7 @@ elseif ($action === 'getCustomOrderDetails') {
 
 // METTRE À JOUR LE STATUT D'UNE COMMANDE SUR MESURE (ADMIN)
 elseif ($action === 'updateCustomOrderStatus') {
+    $input = getJSONInput();
     $token = $input['token'] ?? '';
     $order_id = intval($input['order_id'] ?? 0);
     $status = sanitizeInput($input['status'] ?? '');
@@ -254,12 +302,12 @@ elseif ($action === 'updateCustomOrderStatus') {
         ], 403);
     }
     
-    // Valider le statut
-    $valid_statuses = ['pending', 'processing', 'completed', 'cancelled'];
+    // Valider le statut selon la base de données
+    $valid_statuses = ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled'];
     if (!in_array($status, $valid_statuses)) {
         sendJSONResponse([
             'success' => false,
-            'message' => 'Statut invalide'
+            'message' => 'Statut invalide. Statuts autorisés: ' . implode(', ', $valid_statuses)
         ], 400);
     }
     
@@ -292,6 +340,7 @@ elseif ($action === 'updateCustomOrderStatus') {
 
 // ANNULER UNE COMMANDE SUR MESURE
 elseif ($action === 'cancelCustomOrder') {
+    $input = getJSONInput();
     $token = $input['token'] ?? '';
     $order_id = intval($input['order_id'] ?? 0);
     
@@ -310,10 +359,10 @@ elseif ($action === 'cancelCustomOrder') {
             throw new Exception('Erreur de connexion');
         }
         
-        // Vérifier que la commande appartient à l'utilisateur
-        $stmt = $conn->prepare("SELECT id, status FROM custom_orders WHERE id = ? AND user_id = ?");
-        $stmt->execute([$order_id, $user['id']]);
-        $order = $stmt->fetch();
+        // Vérifier que la commande appartient à l'utilisateur (par email)
+        $stmt = $conn->prepare("SELECT id, status FROM custom_orders WHERE id = ? AND email = ?");
+        $stmt->execute([$order_id, $user['email']]);
+        $order = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$order) {
             sendJSONResponse([
@@ -353,6 +402,6 @@ else {
     sendJSONResponse([
         'success' => false,
         'message' => 'Action non reconnue: ' . $action
-        ], 400);
+    ], 400);
 }
 ?>

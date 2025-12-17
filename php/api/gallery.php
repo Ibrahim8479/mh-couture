@@ -2,6 +2,7 @@
 /**
  * Gallery API - MH Couture
  * Fichier: php/api/gallery.php
+ * VERSION CORRIGÉE
  */
 
 header('Content-Type: application/json; charset=utf-8');
@@ -12,39 +13,21 @@ header('Access-Control-Allow-Headers: Content-Type');
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/functions.php';
 
-// Fonction pour vérifier si l'utilisateur est admin
-function isAdmin($token) {
-    if (!$token) return false;
-    
-    $conn = getDatabaseConnection();
-    $stmt = $conn->prepare("SELECT is_admin FROM users WHERE token = ?");
-    $stmt->bind_param("s", $token);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($row = $result->fetch_assoc()) {
-        return $row['is_admin'] == 1;
-    }
-    
-    return false;
-}
-
 // Récupérer l'action
 $action = $_GET['action'] ?? $_POST['action'] ?? 'getAll';
 
 try {
-    $conn = getDatabaseConnection();
+    $conn = getDBConnection();
+    
+    if (!$conn) {
+        throw new Exception('Erreur de connexion à la base de données');
+    }
     
     switch ($action) {
         case 'getAll':
             // Récupérer toutes les images de la galerie
-            $query = "SELECT * FROM gallery ORDER BY display_order ASC, created_at DESC";
-            $result = $conn->query($query);
-            
-            $gallery = [];
-            while ($row = $result->fetch_assoc()) {
-                $gallery[] = $row;
-            }
+            $stmt = $conn->query("SELECT * FROM gallery ORDER BY display_order ASC, created_at DESC");
+            $gallery = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             echo json_encode([
                 'success' => true,
@@ -53,17 +36,16 @@ try {
             break;
             
         case 'getById':
-            $id = $_GET['id'] ?? 0;
+            $id = intval($_GET['id'] ?? 0);
             
             $stmt = $conn->prepare("SELECT * FROM gallery WHERE id = ?");
-            $stmt->bind_param("i", $id);
-            $stmt->execute();
-            $result = $stmt->get_result();
+            $stmt->execute([$id]);
+            $item = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if ($row = $result->fetch_assoc()) {
+            if ($item) {
                 echo json_encode([
                     'success' => true,
-                    'item' => $row
+                    'item' => $item
                 ]);
             } else {
                 echo json_encode([
@@ -84,9 +66,9 @@ try {
                 exit;
             }
             
-            $title = $_POST['title'] ?? '';
-            $description = $_POST['description'] ?? '';
-            $category = $_POST['category'] ?? '';
+            $title = sanitizeInput($_POST['title'] ?? '');
+            $description = sanitizeInput($_POST['description'] ?? '');
+            $category = sanitizeInput($_POST['category'] ?? '');
             $display_order = intval($_POST['display_order'] ?? 0);
             $is_featured = isset($_POST['is_featured']) ? 1 : 0;
             
@@ -139,21 +121,14 @@ try {
             }
             
             // Insérer dans la base de données
-            $stmt = $conn->prepare("INSERT INTO gallery (title, description, category, image_url, is_featured, display_order) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("ssssii", $title, $description, $category, $image_url, $is_featured, $display_order);
+            $stmt = $conn->prepare("INSERT INTO gallery (title, description, category, image_url, is_featured, display_order, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
+            $stmt->execute([$title, $description, $category, $image_url, $is_featured, $display_order]);
             
-            if ($stmt->execute()) {
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Image ajoutée à la galerie',
-                    'id' => $conn->insert_id
-                ]);
-            } else {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Erreur lors de l\'ajout'
-                ]);
-            }
+            echo json_encode([
+                'success' => true,
+                'message' => 'Image ajoutée à la galerie',
+                'id' => $conn->lastInsertId()
+            ]);
             break;
             
         case 'update':
@@ -168,9 +143,9 @@ try {
             }
             
             $id = intval($_POST['id'] ?? 0);
-            $title = $_POST['title'] ?? '';
-            $description = $_POST['description'] ?? '';
-            $category = $_POST['category'] ?? '';
+            $title = sanitizeInput($_POST['title'] ?? '');
+            $description = sanitizeInput($_POST['description'] ?? '');
+            $category = sanitizeInput($_POST['category'] ?? '');
             $display_order = intval($_POST['display_order'] ?? 0);
             $is_featured = isset($_POST['is_featured']) ? 1 : 0;
             
@@ -184,10 +159,8 @@ try {
             
             // Récupérer l'image actuelle
             $stmt = $conn->prepare("SELECT image_url FROM gallery WHERE id = ?");
-            $stmt->bind_param("i", $id);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            $current = $result->fetch_assoc();
+            $stmt->execute([$id]);
+            $current = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$current) {
                 echo json_encode([
@@ -225,19 +198,12 @@ try {
             
             // Mettre à jour dans la base de données
             $stmt = $conn->prepare("UPDATE gallery SET title = ?, description = ?, category = ?, image_url = ?, is_featured = ?, display_order = ? WHERE id = ?");
-            $stmt->bind_param("ssssiii", $title, $description, $category, $image_url, $is_featured, $display_order, $id);
+            $stmt->execute([$title, $description, $category, $image_url, $is_featured, $display_order, $id]);
             
-            if ($stmt->execute()) {
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Image mise à jour'
-                ]);
-            } else {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Erreur lors de la mise à jour'
-                ]);
-            }
+            echo json_encode([
+                'success' => true,
+                'message' => 'Image mise à jour'
+            ]);
             break;
             
         case 'delete':
@@ -265,11 +231,10 @@ try {
             
             // Récupérer l'image pour la supprimer
             $stmt = $conn->prepare("SELECT image_url FROM gallery WHERE id = ?");
-            $stmt->bind_param("i", $id);
-            $stmt->execute();
-            $result = $stmt->get_result();
+            $stmt->execute([$id]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            if ($row = $result->fetch_assoc()) {
+            if ($row) {
                 // Supprimer le fichier
                 if ($row['image_url'] && file_exists(__DIR__ . '/../../' . $row['image_url'])) {
                     unlink(__DIR__ . '/../../' . $row['image_url']);
@@ -277,19 +242,12 @@ try {
                 
                 // Supprimer de la base de données
                 $stmt = $conn->prepare("DELETE FROM gallery WHERE id = ?");
-                $stmt->bind_param("i", $id);
+                $stmt->execute([$id]);
                 
-                if ($stmt->execute()) {
-                    echo json_encode([
-                        'success' => true,
-                        'message' => 'Image supprimée'
-                    ]);
-                } else {
-                    echo json_encode([
-                        'success' => false,
-                        'message' => 'Erreur lors de la suppression'
-                    ]);
-                }
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Image supprimée'
+                ]);
             } else {
                 echo json_encode([
                     'success' => false,
@@ -306,8 +264,10 @@ try {
     }
     
 } catch (Exception $e) {
+    error_log('Erreur Gallery API: ' . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => 'Erreur serveur: ' . $e->getMessage()
     ]);
 }
+?>
