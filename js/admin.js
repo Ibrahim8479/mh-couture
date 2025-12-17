@@ -3,7 +3,7 @@
 
 let currentSection = 'dashboard';
 let allProducts = [];
-
+let allGalleryImages = [];
 // ===============================
 // INITIALISATION
 // ===============================
@@ -53,6 +53,310 @@ function showSection(section) {
         }, 50);
     }
 }
+
+// ===============================
+// GALLERY MANAGEMENT
+// ===============================
+
+function loadGalleryManagement() {
+    console.log('Chargement de la galerie admin...');
+    
+    fetch('php/api/gallery.php?action=getAll')
+        .then(r => r.json())
+        .then(data => {
+            console.log('Galerie reçue:', data);
+            if (data.success && Array.isArray(data.gallery)) {
+                allGalleryImages = data.gallery;
+                displayGalleryAdmin(allGalleryImages);
+                setupGalleryFilters();
+            } else {
+                showGalleryError(data.message || 'Impossible de charger la galerie');
+            }
+        })
+        .catch(err => {
+            console.error('Erreur:', err);
+            showGalleryError('Erreur de connexion');
+        });
+}
+
+function displayGalleryAdmin(images) {
+    const grid = document.getElementById('galleryGridAdmin');
+    if (!grid) return;
+    
+    if (!images.length) {
+        grid.innerHTML = '<div class="no-data">Aucune image dans la galerie</div>';
+        return;
+    }
+    
+    grid.innerHTML = images.map(img => {
+        const imgSrc = img.image_url.startsWith('uploads/') 
+            ? '/' + img.image_url 
+            : img.image_url;
+            
+        return `
+            <div class="gallery-item-admin" data-category="${img.category}">
+                ${img.is_featured == 1 ? '<span class="featured-badge">À la une</span>' : ''}
+                <img src="${imgSrc}" alt="${img.title}" onerror="this.src='https://via.placeholder.com/250x300/d97642/ffffff?text=Image'">
+                <div class="gallery-item-info">
+                    <h3>${img.title}</h3>
+                    <p>${img.description || ''}</p>
+                    <span class="gallery-item-category">${getCategoryName(img.category)}</span>
+                    <div class="gallery-item-actions">
+                        <button class="btn-edit" onclick="editGalleryImage(${img.id})">Modifier</button>
+                        <button class="btn-delete" onclick="deleteGalleryImage(${img.id})">Supprimer</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function showGalleryError(message) {
+    const grid = document.getElementById('galleryGridAdmin');
+    if (grid) grid.innerHTML = `<div class="no-data">${message}</div>`;
+}
+
+function setupGalleryFilters() {
+    const categoryFilter = document.getElementById('galleryCategoryFilter');
+    const searchInput = document.getElementById('gallerySearch');
+    
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', filterGalleryAdmin);
+    }
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', filterGalleryAdmin);
+    }
+}
+
+function filterGalleryAdmin() {
+    const cat = document.getElementById('galleryCategoryFilter')?.value || 'all';
+    const q = document.getElementById('gallerySearch')?.value.toLowerCase() || '';
+    
+    let filtered = allGalleryImages;
+    
+    if (cat !== 'all') {
+        filtered = filtered.filter(img => img.category === cat);
+    }
+    
+    if (q) {
+        filtered = filtered.filter(img => 
+            (img.title || '').toLowerCase().includes(q) ||
+            (img.description || '').toLowerCase().includes(q)
+        );
+    }
+    
+    displayGalleryAdmin(filtered);
+}
+
+// ===============================
+// GALLERY MODAL
+// ===============================
+function openGalleryModal(imageId = null) {
+    const modal = document.getElementById('galleryModal');
+    const form = document.getElementById('galleryForm');
+    
+    if (!modal || !form) return;
+    
+    form.reset();
+    const preview = document.getElementById('galleryImagePreview');
+    if (preview) preview.innerHTML = '';
+    
+    if (imageId) {
+        document.getElementById('galleryModalTitle').textContent = 'Modifier l\'image';
+        const image = allGalleryImages.find(img => img.id === imageId);
+        
+        if (image) {
+            document.getElementById('galleryId').value = image.id;
+            document.getElementById('galleryTitle').value = image.title || '';
+            document.getElementById('galleryDescription').value = image.description || '';
+            document.getElementById('galleryCategory').value = image.category || '';
+            document.getElementById('galleryDisplayOrder').value = image.display_order || 0;
+            document.getElementById('galleryFeatured').checked = image.is_featured == 1;
+            
+            // Afficher l'image actuelle
+            if (image.image_url && preview) {
+                const imgSrc = image.image_url.startsWith('uploads/') 
+                    ? '/' + image.image_url 
+                    : image.image_url;
+                preview.innerHTML = `<img src="${imgSrc}" onerror="this.style.display='none'">`;
+            }
+            
+            // Rendre l'upload d'image optionnel en modification
+            const imageInput = document.getElementById('galleryImage');
+            if (imageInput) imageInput.required = false;
+        }
+    } else {
+        document.getElementById('galleryModalTitle').textContent = 'Ajouter à la galerie';
+        const imageInput = document.getElementById('galleryImage');
+        if (imageInput) imageInput.required = true;
+    }
+    
+    modal.classList.add('active');
+}
+
+function closeGalleryModal() {
+    const modal = document.getElementById('galleryModal');
+    if (modal) modal.classList.remove('active');
+}
+
+// Setup Gallery Form
+function setupGalleryModal() {
+    const modal = document.getElementById('galleryModal');
+    const form = document.getElementById('galleryForm');
+    const imageInput = document.getElementById('galleryImage');
+    
+    if (!modal || !form) return;
+    
+    // Fermeture
+    const closeBtn = modal.querySelector('.close-btn');
+    if (closeBtn) closeBtn.addEventListener('click', closeGalleryModal);
+    
+    window.addEventListener('click', e => {
+        if (e.target === modal) closeGalleryModal();
+    });
+    
+    // Preview image
+    if (imageInput) {
+        imageInput.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            if (file.size > 5 * 1024 * 1024) {
+                showError('Image trop volumineuse (max 5MB)');
+                imageInput.value = '';
+                return;
+            }
+            
+            const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            if (!validTypes.includes(file.type)) {
+                showError('Format d\'image non valide');
+                imageInput.value = '';
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = ev => {
+                const preview = document.getElementById('galleryImagePreview');
+                if (preview) preview.innerHTML = `<img src="${ev.target.result}">`;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    
+    // Submit
+    form.addEventListener('submit', handleGallerySubmit);
+}
+
+function handleGallerySubmit(e) {
+    e.preventDefault();
+    
+    const token = getAuthToken();
+    if (!token) {
+        showError('Non authentifié');
+        return;
+    }
+    
+    const imageId = document.getElementById('galleryId').value;
+    const formData = new FormData();
+    
+    formData.append('action', imageId ? 'update' : 'create');
+    formData.append('token', token);
+    if (imageId) formData.append('id', imageId);
+    
+    formData.append('title', document.getElementById('galleryTitle').value);
+    formData.append('description', document.getElementById('galleryDescription').value);
+    formData.append('category', document.getElementById('galleryCategory').value);
+    formData.append('display_order', document.getElementById('galleryDisplayOrder').value);
+    
+    if (document.getElementById('galleryFeatured').checked) {
+        formData.append('is_featured', '1');
+    }
+    
+    const imageFile = document.getElementById('galleryImage').files[0];
+    if (imageFile) {
+        formData.append('image', imageFile);
+    }
+    
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Enregistrement...';
+    
+    fetch('php/api/gallery.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+        
+        if (data.success) {
+            showSuccess(imageId ? 'Image modifiée !' : 'Image ajoutée !');
+            closeGalleryModal();
+            loadGalleryManagement();
+        } else {
+            showError(data.message || 'Erreur lors de l\'enregistrement');
+        }
+    })
+    .catch(err => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+        console.error('Erreur:', err);
+        showError('Erreur de connexion');
+    });
+}
+
+function editGalleryImage(id) {
+    openGalleryModal(id);
+}
+
+function deleteGalleryImage(id) {
+    if (!confirm('Voulez-vous vraiment supprimer cette image ?')) return;
+    
+    const token = getAuthToken();
+    if (!token) {
+        showError('Non authentifié');
+        return;
+    }
+    
+    fetch('php/api/gallery.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            action: 'delete',
+            id: id,
+            token: token
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showSuccess('Image supprimée');
+            loadGalleryManagement();
+        } else {
+            showError(data.message || 'Erreur lors de la suppression');
+        }
+    })
+    .catch(err => {
+        console.error('Erreur:', err);
+        showError('Erreur de connexion');
+    });
+}
+
+// Update showSection to handle gallery
+const originalShowSection = showSection;
+showSection = function(section) {
+    originalShowSection(section);
+    
+    if (section === 'gallery') {
+        setTimeout(() => {
+            loadGalleryManagement();
+            setupGalleryModal();
+        }, 50);
+    }
+};
 
 // ===============================
 // DASHBOARD

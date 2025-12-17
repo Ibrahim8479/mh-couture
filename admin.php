@@ -51,13 +51,20 @@ $adminEmail = $_SESSION['user_email'] ?? $user['email'] ?? '';
                 <a href="admin.php?section=products" class="nav-link" data-section="products">
                     📦 Produits
                 </a>
+                
+                 <a href="admin.php?section=gallery" class="nav-link" data-section="gallery">
+                    🖼️ Galerie
+                    </a>
+
                 <a href="admin.php?section=orders" class="nav-link" data-section="orders">
                     📋 Commandes
                 </a>
                 <a href="admin.php?section=users" class="nav-link" data-section="users">
                     👥 Utilisateurs
                 </a>
-
+                <a href="admin.php?section=custom_orders" class="nav-link" data-section="custom_orders">
+                    ✂️ Commandes sur mesure 
+                </a>
 
                 <a href="admin.php?section=users" class="nav-link" data-section="messages">
                     💬 Messages
@@ -230,6 +237,91 @@ $adminEmail = $_SESSION['user_email'] ?? $user['email'] ?? '';
                     </table>
                 </div>
             </section>
+            section id="gallery-section" class="content-section">
+    <div class="section-header">
+        <h2>Gestion de la Galerie</h2>
+        <button class="btn-primary" onclick="openGalleryModal()">+ Ajouter à la galerie</button>
+    </div>
+    
+    <div class="filters-bar">
+        <input type="text" placeholder="Rechercher..." id="gallerySearch">
+        <select id="galleryCategoryFilter">
+            <option value="all">Toutes les catégories</option>
+            <option value="homme">Homme</option>
+            <option value="femme">Femme</option>
+            <option value="enfant">Enfant</option>
+            <option value="mariage">Mariage</option>
+            <option value="traditionnel">Traditionnel</option>
+        </select>
+    </div>
+
+    <div class="gallery-grid-admin" id="galleryGridAdmin">
+        <div class="loading">Chargement de la galerie...</div>
+    </div>
+</section>
+
+<!-- GALLERY MODAL -->
+<div id="galleryModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="galleryModalTitle">Ajouter à la galerie</h2>
+            <button class="close-btn" onclick="closeGalleryModal()">✕</button>
+        </div>
+        <form id="galleryForm" enctype="multipart/form-data">
+            <input type="hidden" id="galleryId">
+            
+            <div class="form-group">
+                <label for="galleryTitle">Titre *</label>
+                <input type="text" id="galleryTitle" required>
+            </div>
+
+            <div class="form-group">
+                <label for="galleryDescription">Description</label>
+                <textarea id="galleryDescription" rows="3"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="galleryCategory">Catégorie *</label>
+                <select id="galleryCategory" required>
+                    <option value="">Sélectionner...</option>
+                    <option value="homme">Homme</option>
+                    <option value="femme">Femme</option>
+                    <option value="enfant">Enfant</option>
+                    <option value="mariage">Mariage</option>
+                    <option value="traditionnel">Traditionnel</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="galleryImage">Image *</label>
+                <input type="file" id="galleryImage" accept="image/*">
+                <div id="galleryImagePreview" class="image-preview"></div>
+                <small style="color: #666; font-size: 12px;">Laissez vide pour garder l'image actuelle lors de la modification</small>
+            </div>
+
+            <div class="form-group">
+                <label for="galleryDisplayOrder">Ordre d'affichage</label>
+                <input type="number" id="galleryDisplayOrder" min="0" value="0">
+            </div>
+
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="galleryFeatured">
+                    <span>Image à la une</span>
+                </label>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeGalleryModal()">
+                    Annuler
+                </button>
+                <button type="submit" class="btn-primary">
+                    Enregistrer
+                </button>
+            </div>
+                </form>
+            </div>
+            </div>
 
             <!-- CUSTOM ORDERS SECTION -->
             <section id="custom-orders-section" class="content-section">

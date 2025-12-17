@@ -1,16 +1,17 @@
-// gallery.js - CORRIGÉ avec données réelles
+// gallery.js - VERSION FINALE avec API Gallery
 let currentLightboxIndex = 0;
 let galleryImages = [];
 
 document.addEventListener('DOMContentLoaded', function() {
     checkUserLogin();
-    loadGalleryImages();
+    updateCartCount();
+    loadGalleryFromAPI();
     setupFilters();
     setupLightbox();
 });
 
 function checkUserLogin() {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token = getCookie('auth_token') || localStorage.getItem('authToken');
     const userIcon = document.getElementById('userIcon');
     
     if (token && userIcon) {
@@ -22,8 +23,17 @@ function checkUserLogin() {
     }
 }
 
-// Charger les images de la galerie depuis les produits
-function loadGalleryImages() {
+function updateCartCount() {
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const cartCount = document.getElementById('cartCount');
+    if (cartCount) {
+        const totalItems = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
+        cartCount.textContent = totalItems;
+    }
+}
+
+// Charger depuis l'API Gallery
+function loadGalleryFromAPI() {
     const galleryGrid = document.getElementById('galleryGrid');
     
     if (!galleryGrid) {
@@ -33,58 +43,80 @@ function loadGalleryImages() {
     
     galleryGrid.innerHTML = '<div class="loading">Chargement de la galerie...</div>';
     
-    // Charger depuis l'API produits
+    fetch('php/api/gallery.php?action=getAll')
+        .then(response => {
+            if (!response.ok) throw new Error('Erreur de chargement');
+            return response.json();
+        })
+        .then(data => {
+            if (data.success && data.gallery && data.gallery.length > 0) {
+                displayGallery(data.gallery);
+            } else {
+                // Fallback aux produits si la galerie est vide
+                loadFromProducts();
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            loadFromProducts();
+        });
+}
+
+// Fallback: charger depuis les produits
+function loadFromProducts() {
     fetch('php/api/products.php?action=getAll')
         .then(response => response.json())
         .then(data => {
             if (data.success && data.products && data.products.length > 0) {
-                displayGalleryFromProducts(data.products);
+                const galleryData = data.products.map(p => ({
+                    title: p.name,
+                    description: p.description || '',
+                    category: p.category,
+                    image_url: p.image_url,
+                    is_featured: 0
+                }));
+                displayGallery(galleryData);
             } else {
-                // Afficher la galerie par défaut si pas de produits
                 displayDefaultGallery();
             }
         })
-        .catch(error => {
-            console.error('Erreur chargement galerie:', error);
-            displayDefaultGallery();
-        });
+        .catch(() => displayDefaultGallery());
 }
 
-// Afficher la galerie depuis les produits
-function displayGalleryFromProducts(products) {
+// Afficher la galerie
+function displayGallery(images) {
     const galleryGrid = document.getElementById('galleryGrid');
+    if (!galleryGrid) return;
+    
     galleryImages = [];
     
-    // Limiter à 12 produits pour la galerie
-    const galleryProducts = products.slice(0, 12);
-    
-    galleryGrid.innerHTML = galleryProducts.map((product, index) => {
+    galleryGrid.innerHTML = images.map((item, index) => {
         // Déterminer l'URL de l'image
-        let imageUrl = product.image_url;
-        if (!imageUrl || imageUrl === 'NULL') {
-            imageUrl = `https://via.placeholder.com/400x500/d97642/ffffff?text=${encodeURIComponent(product.name)}`;
+        let imageUrl = item.image_url;
+        if (!imageUrl || imageUrl === 'NULL' || imageUrl === '') {
+            imageUrl = `https://via.placeholder.com/400x500/d97642/ffffff?text=${encodeURIComponent(item.title || 'MH Couture')}`;
         } else if (imageUrl.startsWith('uploads/')) {
             imageUrl = '/' + imageUrl;
         }
         
-        // Ajouter à la liste des images pour le lightbox
+        // Ajouter aux images du lightbox
         galleryImages.push({
             src: imageUrl,
-            alt: product.name,
-            title: product.name,
-            description: product.description || '',
-            category: product.category
+            alt: item.title || 'Image',
+            title: item.title || 'Sans titre',
+            description: item.description || '',
+            category: item.category
         });
         
         return `
-            <div class="gallery-item" data-category="${product.category}">
+            <div class="gallery-item" data-category="${item.category}">
                 <div class="image-container" onclick="openLightbox(${index})">
                     <img src="${imageUrl}" 
-                         alt="${product.name}" 
+                         alt="${item.title || ''}" 
                          onerror="this.src='https://via.placeholder.com/400x500/d97642/ffffff?text=MH+Couture'">
                     <div class="overlay">
-                        <h3>${product.name}</h3>
-                        <p>${getCategoryName(product.category)}</p>
+                        <h3>${item.title || 'Sans titre'}</h3>
+                        <p>${item.description || getCategoryName(item.category)}</p>
                         <button class="btn-view">Voir</button>
                     </div>
                 </div>
@@ -93,15 +125,17 @@ function displayGalleryFromProducts(products) {
     }).join('');
 }
 
-// Galerie par défaut si pas de produits
+// Galerie par défaut
 function displayDefaultGallery() {
     const galleryGrid = document.getElementById('galleryGrid');
+    if (!galleryGrid) return;
+    
     galleryImages = [];
     
     const defaultImages = [
         {
             title: 'Costume Trois Pièces Élégant',
-            description: 'Costume complet pour homme avec broderies',
+            description: 'Costume complet brodé raffiné',
             category: 'homme',
             src: 'https://via.placeholder.com/400x500/2c3e50/ffffff?text=Costume+Homme'
         },
@@ -114,7 +148,7 @@ function displayDefaultGallery() {
         {
             title: 'Ensemble Traditionnel',
             description: 'Tenue traditionnelle africaine',
-            category: 'homme',
+            category: 'traditionnel',
             src: 'https://via.placeholder.com/400x500/f39c12/ffffff?text=Traditionnel'
         },
         {
@@ -126,13 +160,13 @@ function displayDefaultGallery() {
         {
             title: 'Costume Mariage',
             description: 'Costume élégant pour mariage',
-            category: 'homme',
+            category: 'mariage',
             src: 'https://via.placeholder.com/400x500/16a085/ffffff?text=Mariage'
         },
         {
             title: 'Robe Traditionnelle',
             description: 'Robe avec motifs traditionnels',
-            category: 'femme',
+            category: 'traditionnel',
             src: 'https://via.placeholder.com/400x500/d35400/ffffff?text=Traditionnel'
         },
         {
@@ -165,7 +199,7 @@ function displayDefaultGallery() {
     `).join('');
 }
 
-// Configuration des filtres
+// Filtres
 function setupFilters() {
     const filterButtons = document.querySelectorAll('.filter-btn');
     
@@ -180,30 +214,27 @@ function setupFilters() {
     });
 }
 
-// Filtrer la galerie
 function filterGallery(filter) {
     const galleryItems = document.querySelectorAll('.gallery-item');
     
     galleryItems.forEach(item => {
         if (filter === 'all') {
             item.style.display = 'block';
-            item.style.animation = 'fadeIn 0.5s';
+            item.style.animation = 'fadeIn 0.5s ease';
         } else if (item.dataset.category === filter) {
             item.style.display = 'block';
-            item.style.animation = 'fadeIn 0.5s';
+            item.style.animation = 'fadeIn 0.5s ease';
         } else {
             item.style.display = 'none';
         }
     });
 }
 
-// Configuration du lightbox
+// Lightbox
 function setupLightbox() {
     const lightbox = document.getElementById('lightbox');
-    
     if (!lightbox) return;
     
-    // Fermer avec Escape
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && lightbox.classList.contains('active')) {
             closeLightbox();
@@ -214,15 +245,11 @@ function setupLightbox() {
         }
     });
     
-    // Fermer en cliquant sur le fond
     lightbox.addEventListener('click', function(e) {
-        if (e.target === lightbox) {
-            closeLightbox();
-        }
+        if (e.target === lightbox) closeLightbox();
     });
 }
 
-// Ouvrir le lightbox
 function openLightbox(index) {
     if (index < 0 || index >= galleryImages.length) return;
     
@@ -246,7 +273,6 @@ function openLightbox(index) {
     document.body.style.overflow = 'hidden';
 }
 
-// Fermer le lightbox
 function closeLightbox() {
     const lightbox = document.getElementById('lightbox');
     if (lightbox) {
@@ -255,7 +281,6 @@ function closeLightbox() {
     }
 }
 
-// Changer d'image dans le lightbox
 function changeLightboxImage(direction) {
     currentLightboxIndex += direction;
     
@@ -268,17 +293,28 @@ function changeLightboxImage(direction) {
     openLightbox(currentLightboxIndex);
 }
 
-// Obtenir le nom de la catégorie
+// Utilitaires
 function getCategoryName(category) {
+    if (!category) return 'Création';
+    
     const categories = {
         'homme': 'Homme',
         'femme': 'Femme',
-        'enfant': 'Enfant'
+        'enfant': 'Enfant',
+        'mariage': 'Mariage',
+        'traditionnel': 'Traditionnel'
     };
     return categories[category.toLowerCase()] || category;
 }
 
-// Ajouter les animations CSS
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
+
+// Animations CSS
 const style = document.createElement('style');
 style.textContent = `
     @keyframes fadeIn {
