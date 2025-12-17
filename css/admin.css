@@ -28,7 +28,7 @@ html, body {
 /* ========== SIDEBAR ========== */
 .sidebar {
     width: 260px;
-    background: #2c3e50;
+    background: #503f2c;
     color: #ecf0f1;
     position: fixed;
     top: 0;
@@ -43,7 +43,7 @@ html, body {
 .logo {
     padding: 30px 20px;
     text-align: center;
-    border-bottom: 1px solid #34495e;
+    border-bottom: 1px solid #503f2c;
 }
 
 .logo h2 {
@@ -93,7 +93,7 @@ html, body {
 /* Sidebar Footer */
 .sidebar-footer {
     padding: 20px;
-    border-top: 1px solid #34495e;
+    border-top: 1px solid #503f2c;
     margin-top: auto;
 }
 
@@ -113,12 +113,12 @@ html, body {
 }
 
 .btn-back {
-    background: #34495e;
+    background: #503f2c;
     color: #ecf0f1;
 }
 
 .btn-back:hover {
-    background: #3d566e;
+    background: #503f2c;
 }
 
 .btn-logout {
