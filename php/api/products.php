@@ -1,11 +1,16 @@
 <?php
-// ===============================
-// products.php - VERSION COMPLÈTE CORRIGÉE
-// Gestion des produits (CRUD + upload image)
-// ===============================
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+/**
+ * API Gestion des Produits - MH Couture
+ * Fichier: php/api/products.php
+ */
 
-require_once __DIR__ . '/config.php';
-require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/functions.php';
+setJSONHeaders();
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -174,3 +179,7 @@ try {
         'message' => $e->getMessage()
     ], 500);
 }
+
+
+
+
