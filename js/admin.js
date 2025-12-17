@@ -171,20 +171,16 @@ function displayProducts(products) {
     }
 
     tbody.innerHTML = products.map(p => {
-        // ✅ CORRECTION : Gérer correctement les chemins d'images
+        // ✅ CHEMIN CORRIGÉ POUR TON SERVEUR
         let imgSrc = 'https://via.placeholder.com/50/d97642/ffffff?text=MH';
         
         if (p.image_url) {
-            // Si l'URL commence par uploads/, ajouter le slash
             if (p.image_url.startsWith('uploads/')) {
-                imgSrc = '/' + p.image_url;
-            } 
-            // Si c'est une URL complète
-            else if (p.image_url.startsWith('http')) {
+                // Chemin complet depuis la racine web
+                imgSrc = '/~ibrahim.abdou/uploads/mh-couture/' + p.image_url;
+            } else if (p.image_url.startsWith('http')) {
                 imgSrc = p.image_url;
-            } 
-            // Sinon, utiliser tel quel
-            else {
+            } else {
                 imgSrc = p.image_url;
             }
         }
@@ -236,11 +232,11 @@ function displayProductsGrid(products) {
     
     grid.innerHTML = products.map(product => {
         // ✅ CORRECTION : Gérer les images dans la grille
-        let imgSrc = 'https://via.placeholder.com/300x400/d97642/ffffff?text=MH+Couture';
+         let imgSrc = 'https://via.placeholder.com/50/d97642/ffffff?text=MH';
         
         if (product.image_url) {
             if (product.image_url.startsWith('uploads/')) {
-                imgSrc = '/' + product.image_url;
+            imgSrc = '/~ibrahim.abdou/uploads/mh-couture/' + product.image_url;
             } else if (product.image_url.startsWith('http')) {
                 imgSrc = product.image_url;
             } else {
@@ -448,11 +444,11 @@ function displayGalleryAdmin(images) {
     
     grid.innerHTML = images.map(img => {
         // ✅ CORRECTION : Gérer les chemins d'images
-        let imgSrc = 'https://via.placeholder.com/300x400/d97642/ffffff?text=MH+Couture';
+        let imgSrc = 'https://via.placeholder.com/50/d97642/ffffff?text=MH';
         
         if (img.image_url) {
             if (img.image_url.startsWith('uploads/')) {
-                imgSrc = '/' + img.image_url;
+                imgSrc = '/~ibrahim.abdou/uploads/mh-couture/' + img.image_url;
             } else if (img.image_url.startsWith('http')) {
                 imgSrc = img.image_url;
             } else {

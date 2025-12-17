@@ -63,12 +63,12 @@ function displayGallery(images) {
     
     grid.innerHTML = images.map((img, index) => {
         // ✅ CORRECTION : Gérer correctement les chemins d'images
-        let imgSrc = 'https://via.placeholder.com/350x450/d97642/ffffff?text=MH+Couture';
+        let imgSrc = 'https://via.placeholder.com/50/d97642/ffffff?text=MH';
         
         if (img.image_url) {
             // Si l'URL commence par uploads/, ajouter le slash
             if (img.image_url.startsWith('uploads/')) {
-                imgSrc = '/' + img.image_url;
+                imgSrc = '/~ibrahim.abdou/uploads/mh-couture/' + img.image_url;
             } 
             // Si c'est une URL complète (http/https)
             else if (img.image_url.startsWith('http')) {
@@ -149,11 +149,11 @@ function openLightbox(index) {
     const img = allGalleryImages[index];
     
     // ✅ CORRECTION : Gérer le chemin de l'image dans la lightbox
-    let imgSrc = 'https://via.placeholder.com/800x600/d97642/ffffff?text=MH+Couture';
+    let imgSrc = 'https://via.placeholder.com/50/d97642/ffffff?text=MH';
     
     if (img.image_url) {
         if (img.image_url.startsWith('uploads/')) {
-            imgSrc = '/' + img.image_url;
+            imgSrc = '/~ibrahim.abdou/uploads/mh-couture/' + img.image_url;
         } else if (img.image_url.startsWith('http')) {
             imgSrc = img.image_url;
         } else {

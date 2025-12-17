@@ -64,12 +64,12 @@ function displayProducts(products) {
     
     grid.innerHTML = products.map(product => {
         // ✅ CORRECTION : Gérer correctement les chemins d'images
-        let imgSrc = 'https://via.placeholder.com/300x400/d97642/ffffff?text=MH+Couture';
+        let imgSrc = 'https://via.placeholder.com/50/d97642/ffffff?text=MH';
         
         if (product.image_url) {
             // Si l'URL commence par uploads/, ajouter le slash
             if (product.image_url.startsWith('uploads/')) {
-                imgSrc = '/' + product.image_url;
+                imgSrc = '/~ibrahim.abdou/uploads/mh-couture/' + product.image_url;
             } 
             // Si c'est une URL complète (http/https)
             else if (product.image_url.startsWith('http')) {
