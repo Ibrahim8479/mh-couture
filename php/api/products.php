@@ -1,8 +1,4 @@
 <?php
-<?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 /**
  * API Gestion des Produits - MH Couture
  * Fichier: php/api/products.php
@@ -10,176 +6,147 @@ error_reporting(E_ALL);
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/functions.php';
+
 setJSONHeaders();
 
-header('Content-Type: application/json; charset=utf-8');
-
-$method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
-// ===============================
-// OUTILS
-// ===============================
-function sendJSONResponse($data, $code = 200) {
-    http_response_code($code);
-    echo json_encode($data);
-    exit;
-}
+// ================================
+// RECUPERER TOUS LES PRODUITS (ADMIN)
+// ================================
+if ($action === 'getAll') {
+    try {
+        $conn = getDBConnection();
+        if (!$conn) {
+            throw new Exception('Erreur connexion DB');
+        }
 
-function uploadFile($file) {
-    if (!isset($file) || $file['error'] !== UPLOAD_ERR_OK) {
-        return [
-            'success' => false,
-            'message' => 'Erreur PHP upload: ' . ($file['error'] ?? 'inconnue')
-        ];
-    }
+        // ⚠️ ADMIN VOIT TOUS LES PRODUITS
+        $stmt = $conn->prepare("
+            SELECT id, name, description, category, price, image_url, stock, is_custom, created_at
+            FROM products
+            ORDER BY created_at DESC
+        ");
+        $stmt->execute();
 
-    $allowed = ['jpg','jpeg','png','gif','webp'];
-    $maxSize = 5 * 1024 * 1024; // 5MB
-
-    if ($file['size'] > $maxSize) {
-        return ['success' => false, 'message' => 'Image trop volumineuse'];
-    }
-
-    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    if (!in_array($ext, $allowed)) {
-        return ['success' => false, 'message' => 'Format image non autorisé'];
-    }
-
-    $uploadDir = __DIR__ . '/../../uploads/products/';
-    if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0775, true);
-    }
-
-    $filename = uniqid('prod_', true) . '.' . $ext;
-    $target = $uploadDir . $filename;
-
-    if (!move_uploaded_file($file['tmp_name'], $target)) {
-        return ['success' => false, 'message' => 'Impossible d\'enregistrer le fichier'];
-    }
-
-    return ['success' => true, 'filename' => $filename];
-}
-
-// ===============================
-// ACTIONS
-// ===============================
-try {
-    if ($method === 'GET' && $action === 'getAll') {
-        $stmt = $pdo->query('SELECT * FROM products ORDER BY created_at DESC');
         $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        sendJSONResponse(['success' => true, 'products' => $products]);
+
+        sendJSONResponse([
+            'success' => true,
+            'products' => $products
+        ]);
+    } catch (Exception $e) {
+        logError('getAll products: ' . $e->getMessage());
+        sendJSONResponse([
+            'success' => false,
+            'message' => 'Erreur chargement produits'
+        ], 500);
+    }
+}
+
+// ================================
+// CREER UN PRODUIT (ADMIN)
+// ================================
+elseif ($action === 'create') {
+    $token = $_POST['token'] ?? '';
+    if (!isAdmin($token)) {
+        sendJSONResponse([
+            'success' => false,
+            'message' => 'Accès refusé'
+        ], 403);
     }
 
-    if ($method === 'POST' && $action === 'create') {
-        $name        = trim($_POST['name'] ?? '');
-        $category    = $_POST['category'] ?? '';
-        $price       = (float) ($_POST['price'] ?? 0);
-        $stock       = (int) ($_POST['stock'] ?? 0);
-        $description = $_POST['description'] ?? '';
-        $is_custom   = isset($_POST['is_custom']) ? 1 : 0;
+    try {
+        $conn = getDBConnection();
 
-        if ($name === '' || $category === '') {
-            throw new Exception('Nom ou catégorie manquant');
-        }
+        $name = sanitizeInput($_POST['name'] ?? '');
+        $category = sanitizeInput($_POST['category'] ?? '');
+        $price = floatval($_POST['price'] ?? 0);
+        $stock = intval($_POST['stock'] ?? 0);
+        $description = sanitizeInput($_POST['description'] ?? '');
+        $is_custom = intval($_POST['is_custom'] ?? 0);
 
-        if (!isset($_FILES['image'])) {
-            throw new Exception('Image requise');
-        }
-
-        $upload = uploadFile($_FILES['image']);
-        if (empty($upload['success'])) {
-            throw new Exception('Erreur upload image: ' . ($upload['message'] ?? 'Inconnue'));
-        }
-
-        $image_url = 'uploads/products/' . $upload['filename'];
-
-        $stmt = $pdo->prepare('INSERT INTO products (name, category, price, stock, description, image_url, is_custom, created_at) VALUES (?,?,?,?,?,?,?,NOW())');
-        $stmt->execute([$name, $category, $price, $stock, $description, $image_url, $is_custom]);
-
-        sendJSONResponse(['success' => true, 'message' => 'Produit ajouté avec succès']);
-    }
-
-    if ($method === 'POST' && $action === 'update') {
-        if (empty($_POST['id'])) {
-            throw new Exception('ID produit manquant');
-        }
-
-        $id = (int) $_POST['id'];
-
-        $stmt = $pdo->prepare('SELECT image_url FROM products WHERE id = ?');
-        $stmt->execute([$id]);
-        $existing = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$existing) {
-            throw new Exception('Produit introuvable');
-        }
-
-        $name        = trim($_POST['name'] ?? '');
-        $category    = $_POST['category'] ?? '';
-        $price       = (float) ($_POST['price'] ?? 0);
-        $stock       = (int) ($_POST['stock'] ?? 0);
-        $description = $_POST['description'] ?? '';
-        $is_custom   = isset($_POST['is_custom']) ? 1 : 0;
-
-        if ($name === '' || $category === '') {
-            throw new Exception('Nom ou catégorie manquant');
-        }
-
-        $image_url = $existing['image_url'];
-
-        // ✅ upload seulement si nouvelle image
-        if (
-            isset($_FILES['image']) &&
-            $_FILES['image']['error'] === UPLOAD_ERR_OK &&
-            !empty($_FILES['image']['name'])
-        ) {
+        $image_url = '';
+        if (!empty($_FILES['image']['name'])) {
             $upload = uploadFile($_FILES['image']);
-            if (empty($upload['success'])) {
-                throw new Exception('Erreur upload image: ' . ($upload['message'] ?? 'Inconnue'));
+            if ($upload['success']) {
+                $image_url = 'uploads/products/' . $upload['filename'];
             }
-
-            if (!empty($image_url) && file_exists(__DIR__ . '/../../' . $image_url)) {
-                unlink(__DIR__ . '/../../' . $image_url);
-            }
-
-            $image_url = 'uploads/products/' . $upload['filename'];
         }
 
-        $stmt = $pdo->prepare('UPDATE products SET name=?, category=?, price=?, stock=?, description=?, image_url=?, is_custom=?, updated_at=NOW() WHERE id=?');
-        $stmt->execute([$name, $category, $price, $stock, $description, $image_url, $is_custom, $id]);
+        $stmt = $conn->prepare("
+            INSERT INTO products (name, description, category, price, image_url, stock, is_custom)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
 
-        sendJSONResponse(['success' => true, 'message' => 'Produit modifié avec succès']);
+        $stmt->execute([
+            $name,
+            $description,
+            $category,
+            $price,
+            $image_url,
+            $stock,
+            $is_custom
+        ]);
+
+        sendJSONResponse(['success' => true]);
+    } catch (Exception $e) {
+        logError('create product: ' . $e->getMessage());
+        sendJSONResponse([
+            'success' => false,
+            'message' => 'Erreur création produit'
+        ], 500);
+    }
+}
+
+// ================================
+// SUPPRIMER UN PRODUIT (ADMIN)
+// ================================
+elseif ($action === 'delete') {
+    $input = getJSONInput();
+    $token = $input['token'] ?? '';
+
+    if (!isAdmin($token)) {
+        sendJSONResponse([
+            'success' => false,
+            'message' => 'Accès refusé'
+        ], 403);
     }
 
-    if ($method === 'POST' && $action === 'delete') {
-        $data = json_decode(file_get_contents('php://input'), true);
-        $id = (int) ($data['id'] ?? 0);
-        if (!$id) throw new Exception('ID manquant');
+    try {
+        $id = intval($input['id'] ?? 0);
+        $conn = getDBConnection();
 
-        $stmt = $pdo->prepare('SELECT image_url FROM products WHERE id = ?');
+        // Récupérer image
+        $stmt = $conn->prepare("SELECT image_url FROM products WHERE id = ?");
         $stmt->execute([$id]);
-        $p = $stmt->fetch(PDO::FETCH_ASSOC);
+        $product = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($p && !empty($p['image_url']) && file_exists(__DIR__ . '/../../' . $p['image_url'])) {
-            unlink(__DIR__ . '/../../' . $p['image_url']);
+        // Supprimer produit
+        $stmt = $conn->prepare("DELETE FROM products WHERE id = ?");
+        $stmt->execute([$id]);
+
+        // Supprimer image
+        if (!empty($product['image_url']) && file_exists('../../' . $product['image_url'])) {
+            unlink('../../' . $product['image_url']);
         }
 
-        $stmt = $pdo->prepare('DELETE FROM products WHERE id = ?');
-        $stmt->execute([$id]);
-
-        sendJSONResponse(['success' => true, 'message' => 'Produit supprimé']);
+        sendJSONResponse(['success' => true]);
+    } catch (Exception $e) {
+        logError('delete product: ' . $e->getMessage());
+        sendJSONResponse([
+            'success' => false,
+            'message' => 'Erreur suppression'
+        ], 500);
     }
+}
 
-    sendJSONResponse(['success' => false, 'message' => 'Action non reconnue'], 400);
-
-} catch (Exception $e) {
+// ================================
+// ACTION INCONNUE
+// ================================
+else {
     sendJSONResponse([
         'success' => false,
-        'message' => $e->getMessage()
-    ], 500);
+        'message' => 'Action non reconnue'
+    ], 400);
 }
-
-
-
-
