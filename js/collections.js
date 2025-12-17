@@ -69,7 +69,7 @@ function displayProducts(products) {
         if (product.image_url) {
             // Si l'URL commence par uploads/, ajouter le slash
             if (product.image_url.startsWith('uploads/')) {
-                imgSrc = product.image_url;
+                imgSrc =product.image_url;
             } 
             // Si c'est une URL complète (http/https)
             else if (product.image_url.startsWith('http')) {
@@ -306,6 +306,4 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-console.log('✅ collections.js chargé avec succès');// ===============================
-// CUSTOM-DESIGNS.JS
-// MH Couture - Notifications personnalisées
+console.log('✅ collections.js chargé avec succès');

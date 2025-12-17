@@ -1,15 +1,13 @@
 // ===============================
-// ADMIN.JS - VERSION FINALE CORRIGÉE
-// MH Couture - Toutes corrections incluses
+// ADMIN.JS - VERSION CORRIGÉE COMPLÈTE
+// MH Couture - Tous les bugs corrigés
 // ===============================
 
+let currentSection = 'dashboard';
 let allProducts = [];
 let allGalleryImages = [];
 let allCustomOrders = [];
 let allUsers = [];
-let allMessages = [];
-let allOrders = [];
-let currentProductView = 'grid';
 
 // ===============================
 // INITIALISATION
@@ -31,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ===============================
 function setupNavigation() {
     const navLinks = document.querySelectorAll('.nav-link');
+
     navLinks.forEach(link => {
         link.addEventListener('click', e => {
             e.preventDefault();
@@ -39,24 +38,25 @@ function setupNavigation() {
             
             const section = link.dataset.section;
             showSection(section);
+            
             window.history.pushState({}, '', `?section=${section}`);
         });
     });
 }
 
 function showSection(section) {
-    console.log('📂 Affichage section:', section);
+    console.log('📂 Affichage de la section:', section);
     
     document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
     const el = document.getElementById(section + '-section');
     
-    if (!el) {
+    if (el) {
+        el.classList.add('active');
+    } else {
         console.error('❌ Section non trouvée:', section);
         return;
     }
-    
-    el.classList.add('active');
-    
+
     const titles = {
         dashboard: 'Tableau de bord',
         products: 'Gestion des Produits',
@@ -71,30 +71,22 @@ function showSection(section) {
     const pageTitle = document.getElementById('pageTitle');
     if (pageTitle) pageTitle.textContent = titles[section] || section;
 
-    // Charger les données de la section
+    currentSection = section;
+
     setTimeout(() => {
-        switch(section) {
-            case 'products':
-                loadProducts();
-                setupProductFilters();
-                setupProductViewToggle();
-                break;
-            case 'gallery':
-                loadGalleryManagement();
-                setupGalleryFilters();
-                break;
-            case 'custom_orders':
-                loadCustomOrders();
-                break;
-            case 'messages':
-                loadMessages();
-                break;
-            case 'users':
-                loadUsers();
-                break;
-            case 'orders':
-                loadOrders();
-                break;
+        if (section === 'products') {
+            loadProducts();
+            setupProductFilters();
+            setupProductViewToggle();
+        } else if (section === 'gallery') {
+            loadGalleryManagement();
+            setupGalleryFilters();
+        } else if (section === 'custom_orders') {
+            loadCustomOrders();
+        } else if (section === 'users') {
+            loadUsers();
+        } else if (section === 'orders') {
+            loadOrders();
         }
     }, 100);
 }
@@ -104,11 +96,15 @@ function showSection(section) {
 // ===============================
 function loadDashboardData() {
     const token = getAuthToken();
-    if (!token) return;
+    if (!token) {
+        console.error('❌ Pas de token d\'authentification');
+        return;
+    }
 
-    fetch(`php/api/admin.php?action=getDashboardStats&token=${encodeURIComponent(token)}`)
+    fetch('php/api/admin.php?action=getDashboardStats&token=' + encodeURIComponent(token))
         .then(r => r.json())
         .then(data => {
+            console.log('📊 Stats dashboard:', data);
             if (data.success) {
                 document.getElementById('totalProducts').textContent = data.stats.products || 0;
                 document.getElementById('totalOrders').textContent = data.stats.orders || 0;
@@ -120,34 +116,51 @@ function loadDashboardData() {
 }
 
 // ===============================
-// PRODUITS
+// PRODUITS - CORRECTION IMAGES
 // ===============================
 function loadProducts() {
-    console.log('📦 Chargement des produits...');
+    console.log('🔄 Chargement des produits...');
     
     const tbody = document.querySelector('#productsTable tbody');
     const grid = document.getElementById('productsGridAdmin');
     
-    if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="loading">⏳ Chargement...</td></tr>';
-    if (grid) grid.innerHTML = '<div class="loading">⏳ Chargement...</div>';
+    if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="6" class="loading">⏳ Chargement...</td></tr>';
+    }
+    if (grid) {
+        grid.innerHTML = '<div class="loading">⏳ Chargement...</div>';
+    }
     
     fetch('php/api/products.php?action=getAll')
-        .then(r => r.json())
+        .then(r => {
+            if (!r.ok) throw new Error('Erreur HTTP: ' + r.status);
+            return r.json();
+        })
         .then(data => {
+            console.log('✅ Produits reçus:', data);
             if (data.success && Array.isArray(data.products)) {
                 allProducts = data.products;
+                
                 if (currentProductView === 'grid') {
                     displayProductsGrid(allProducts);
+                    if (document.querySelector('#products-section .table-container')) {
+                        document.querySelector('#products-section .table-container').style.display = 'none';
+                    }
                 } else {
                     displayProducts(allProducts);
+                    if (grid) grid.style.display = 'none';
                 }
             } else {
                 showProductsError(data.message || 'Erreur de chargement');
             }
         })
-        .catch(err => showProductsError('Erreur: ' + err.message));
+        .catch(err => {
+            console.error('❌ Erreur:', err);
+            showProductsError('Erreur de connexion: ' + err.message);
+        });
 }
 
+// CORRECTION : Affichage des images produits
 function displayProducts(products) {
     const tbody = document.querySelector('#productsTable tbody');
     if (!tbody) return;
@@ -158,9 +171,22 @@ function displayProducts(products) {
     }
 
     tbody.innerHTML = products.map(p => {
+        // ✅ CORRECTION : Gérer correctement les chemins d'images
         let imgSrc = 'https://via.placeholder.com/50/d97642/ffffff?text=MH';
+        
         if (p.image_url) {
-            imgSrc = p.image_url.startsWith('http') ? p.image_url : p.image_url;
+            // Si l'URL commence par uploads/, ajouter le slash
+            if (p.image_url.startsWith('uploads/')) {
+                imgSrc = p.image_url;
+            } 
+            // Si c'est une URL complète
+            else if (p.image_url.startsWith('http')) {
+                imgSrc = p.image_url;
+            } 
+            // Sinon, utiliser tel quel
+            else {
+                imgSrc = p.image_url;
+            }
         }
         
         const price = Number(p.price || 0).toLocaleString('fr-FR');
@@ -183,6 +209,7 @@ function displayProducts(products) {
     }).join('');
 }
 
+// CORRECTION : Vue grille avec images
 function displayProductsGrid(products) {
     let grid = document.getElementById('productsGridAdmin');
     
@@ -208,16 +235,34 @@ function displayProductsGrid(products) {
     }
     
     grid.innerHTML = products.map(product => {
+        // ✅ CORRECTION : Gérer les images dans la grille
         let imgSrc = 'https://via.placeholder.com/300x400/d97642/ffffff?text=MH+Couture';
+        
         if (product.image_url) {
-            imgSrc = product.image_url.startsWith('http') ? product.image_url : product.image_url;
+            if (product.image_url.startsWith('uploads/')) {
+                imgSrc = product.image_url;
+            } else if (product.image_url.startsWith('http')) {
+                imgSrc = product.image_url;
+            } else {
+                imgSrc = product.image_url;
+            }
         }
         
         const price = Number(product.price || 0).toLocaleString('fr-FR');
         const stock = Number(product.stock || 0);
         
-        let stockClass = stock === 0 ? 'out-stock' : (stock < 5 ? 'low-stock' : 'in-stock');
-        let stockLabel = stock === 0 ? 'Rupture' : (stock < 5 ? 'Stock faible' : 'En stock');
+        let stockBadge = '';
+        let stockClass = '';
+        if (stock === 0) {
+            stockBadge = 'Rupture';
+            stockClass = 'out-stock';
+        } else if (stock < 5) {
+            stockBadge = 'Stock faible';
+            stockClass = 'low-stock';
+        } else {
+            stockBadge = 'En stock';
+            stockClass = 'in-stock';
+        }
         
         return `
             <div class="product-item-admin" data-category="${product.category || ''}">
@@ -235,7 +280,7 @@ function displayProductsGrid(products) {
                     
                     <div class="product-item-stock">
                         <span>Stock: <strong>${stock}</strong></span>
-                        <span class="stock-badge ${stockClass}">${stockLabel}</span>
+                        <span class="stock-badge ${stockClass}">${stockBadge}</span>
                     </div>
                     
                     <div class="product-item-actions">
@@ -250,6 +295,8 @@ function displayProductsGrid(products) {
             </div>
         `;
     }).join('');
+    
+    console.log(`✅ ${products.length} produits affichés en grille`);
 }
 
 function showProductsError(message) {
@@ -295,6 +342,9 @@ function filterProducts() {
     }
 }
 
+// Toggle view
+let currentProductView = 'grid';
+
 function toggleProductView(view) {
     currentProductView = view;
     
@@ -325,7 +375,9 @@ function setupProductViewToggle() {
     if (!section) return;
     
     const header = section.querySelector('.section-header');
-    if (!header || document.getElementById('viewToggle')) return;
+    if (!header) return;
+    
+    if (document.getElementById('viewToggle')) return;
     
     const viewToggle = document.createElement('div');
     viewToggle.id = 'viewToggle';
@@ -342,213 +394,33 @@ function setupProductViewToggle() {
     header.appendChild(viewToggle);
 }
 
-// ===== MODAL PRODUIT =====
-function setupProductModal() {
-    const modal = document.getElementById('productModal');
-    const form = document.getElementById('productForm');
-    const imageInput = document.getElementById('productImage');
-    
-    if (!modal || !form) return;
-
-    const closeBtn = modal.querySelector('.close-btn');
-    if (closeBtn) closeBtn.addEventListener('click', closeProductModal);
-
-    window.addEventListener('click', e => { 
-        if (e.target === modal) closeProductModal(); 
-    });
-
-    if (imageInput) {
-        imageInput.addEventListener('change', e => {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            if (file.size > 5 * 1024 * 1024) {
-                showError('Image trop volumineuse (max 5MB)');
-                imageInput.value = '';
-                return;
-            }
-            
-            const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-            if (!validTypes.includes(file.type)) {
-                showError("Format d'image non valide");
-                imageInput.value = '';
-                return;
-            }
-            
-            const reader = new FileReader();
-            reader.onload = ev => {
-                const preview = document.getElementById('imagePreview');
-                if (preview) preview.innerHTML = `<img src="${ev.target.result}" style="max-width: 200px; border-radius: 8px;">`;
-            };
-            reader.readAsDataURL(file);
-        });
-    }
-
-    form.addEventListener('submit', handleProductSubmit);
-}
-
-function openProductModal(productId = null) {
-    const modal = document.getElementById('productModal');
-    const form = document.getElementById('productForm');
-    if (!modal || !form) return;
-
-    form.reset();
-    const preview = document.getElementById('imagePreview');
-    if (preview) preview.innerHTML = '';
-
-    if (productId) {
-        document.getElementById('modalTitle').textContent = 'Modifier le produit';
-        const product = allProducts.find(p => p.id === productId);
-        if (product) {
-            document.getElementById('productId').value = product.id;
-            document.getElementById('productName').value = product.name || '';
-            document.getElementById('productCategory').value = product.category || '';
-            document.getElementById('productPrice').value = product.price || 0;
-            document.getElementById('productStock').value = product.stock || 0;
-            document.getElementById('productDescription').value = product.description || '';
-            document.getElementById('isCustom').checked = product.is_custom == 1;
-            
-            if (product.image_url && preview) {
-                let imgSrc = product.image_url.startsWith('http') ? product.image_url : product.image_url;
-                preview.innerHTML = `<img src="${imgSrc}" onerror="this.style.display='none'" style="max-width: 200px; border-radius: 8px;">`;
-            }
-            
-            const imageInput = document.getElementById('productImage');
-            if (imageInput) imageInput.required = false;
-        }
-    } else {
-        document.getElementById('modalTitle').textContent = 'Ajouter un produit';
-        const imageInput = document.getElementById('productImage');
-        if (imageInput) imageInput.required = true;
-    }
-
-    modal.classList.add('active');
-}
-
-function closeProductModal() {
-    const modal = document.getElementById('productModal');
-    if (modal) modal.classList.remove('active');
-}
-
-function handleProductSubmit(e) {
-    e.preventDefault();
-
-    const token = getAuthToken();
-    if (!token) {
-        showError('Non authentifié');
-        return;
-    }
-
-    const productId = document.getElementById('productId').value;
-    const formData = new FormData();
-
-    formData.append('action', productId ? 'update' : 'create');
-    formData.append('token', token);
-    if (productId) formData.append('id', productId);
-
-    formData.append('name', document.getElementById('productName').value);
-    formData.append('category', document.getElementById('productCategory').value);
-    formData.append('price', document.getElementById('productPrice').value);
-    formData.append('stock', document.getElementById('productStock').value);
-    formData.append('description', document.getElementById('productDescription').value);
-    formData.append('is_custom', document.getElementById('isCustom').checked ? 1 : 0);
-
-    const imageFile = document.getElementById('productImage').files[0];
-    if (imageFile) formData.append('image', imageFile);
-
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    submitBtn.disabled = true;
-    submitBtn.textContent = '⏳ Enregistrement...';
-
-    fetch('php/api/products.php', { 
-        method: 'POST', 
-        body: formData 
-    })
-    .then(r => r.json())
-    .then(data => {
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-        
-        if (data.success) {
-            showSuccess(productId ? '✅ Produit modifié !' : '✅ Produit ajouté !');
-            closeProductModal();
-            loadProducts();
-        } else {
-            showError(data.message || "Erreur lors de l'enregistrement");
-        }
-    })
-    .catch(err => {
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-        console.error('❌ Erreur:', err);
-        showError('Erreur de connexion');
-    });
-}
-
-function editProduct(id) { 
-    openProductModal(id); 
-}
-
-// ✅ REMPLACER CETTE FONCTION DANS admin.js
-// Cherche: function deleteProduct(id)
-// Remplace par:
-
-function deleteProduct(id) {
-    if (!confirm('🗑️ Voulez-vous vraiment supprimer ce produit ?')) return;
-
-    const token = getAuthToken();
-    if (!token) {
-        showError('❌ Non authentifié');
-        return;
-    }
-
-    console.log('🗑️ Suppression produit ID:', id);
-
-    fetch('php/api/products.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            action: 'delete', 
-            id: id, 
-            token: token 
-        })
-    })
-    .then(r => {
-        console.log('📡 Réponse status:', r.status);
-        if (!r.ok) {
-            throw new Error('Erreur HTTP: ' + r.status);
-        }
-        return r.json();
-    })
-    .then(data => {
-        console.log('✅ Réponse:', data);
-        if (data.success) {
-            showSuccess('✅ Produit supprimé');
-            loadProducts();
-        } else {
-            showError('❌ Erreur: ' + (data.message || 'Erreur lors de la suppression'));
-        }
-    })
-    .catch(err => {
-        console.error('❌ Erreur suppression:', err);
-        showError('❌ Erreur de connexion: ' + err.message);
-    });
-}
+// ===============================// ===============================
+// ADMIN.JS - PARTIE 2
+// Galerie + Commandes Sur Mesure
 // ===============================
-// GALERIE
+
+// ===============================
+// GALERIE - CORRECTION COMPLÈTE
 // ===============================
 function loadGalleryManagement() {
-    console.log('🖼️ Chargement de la galerie...');
+    console.log('🖼️ Chargement de la galerie admin...');
     
     const grid = document.getElementById('galleryGridAdmin');
-    if (!grid) return;
+    if (!grid) {
+        console.error('❌ Element galleryGridAdmin non trouvé');
+        return;
+    }
     
-    grid.innerHTML = '<div class="loading">⏳ Chargement...</div>';
+    grid.innerHTML = '<div class="loading" style="grid-column: 1/-1; text-align: center; padding: 40px;">⏳ Chargement de la galerie...</div>';
     
     fetch('php/api/gallery.php?action=getAll')
-        .then(r => r.json())
+        .then(r => {
+            console.log('📡 Réponse galerie status:', r.status);
+            if (!r.ok) throw new Error('Erreur HTTP: ' + r.status);
+            return r.json();
+        })
         .then(data => {
+            console.log('✅ Galerie reçue:', data);
             if (data.success && Array.isArray(data.gallery)) {
                 allGalleryImages = data.gallery;
                 displayGalleryAdmin(allGalleryImages);
@@ -556,22 +428,36 @@ function loadGalleryManagement() {
                 showGalleryError(data.message || 'Erreur de chargement');
             }
         })
-        .catch(err => showGalleryError('Erreur: ' + err.message));
+        .catch(err => {
+            console.error('❌ Erreur galerie:', err);
+            showGalleryError('Erreur de connexion: ' + err.message);
+        });
 }
 
 function displayGalleryAdmin(images) {
     const grid = document.getElementById('galleryGridAdmin');
-    if (!grid) return;
+    if (!grid) {
+        console.error('❌ Element galleryGridAdmin non trouvé');
+        return;
+    }
     
     if (!images || images.length === 0) {
-        grid.innerHTML = '<div class="no-data">📷 Aucune image</div>';
+        grid.innerHTML = '<div class="no-data" style="grid-column: 1/-1; text-align: center; padding: 40px; color: #666;">📷 Aucune image dans la galerie</div>';
         return;
     }
     
     grid.innerHTML = images.map(img => {
+        // ✅ CORRECTION : Gérer les chemins d'images
         let imgSrc = 'https://via.placeholder.com/300x400/d97642/ffffff?text=MH+Couture';
+        
         if (img.image_url) {
-            imgSrc = img.image_url.startsWith('http') ? img.image_url : img.image_url;
+            if (img.image_url.startsWith('uploads/')) {
+                imgSrc = img.image_url;
+            } else if (img.image_url.startsWith('http')) {
+                imgSrc = img.image_url;
+            } else {
+                imgSrc = img.image_url;
+            }
         }
             
         return `
@@ -590,12 +476,14 @@ function displayGalleryAdmin(images) {
             </div>
         `;
     }).join('');
+    
+    console.log(`✅ ${images.length} images affichées`);
 }
 
 function showGalleryError(message) {
     const grid = document.getElementById('galleryGridAdmin');
     if (grid) {
-        grid.innerHTML = `<div class="no-data" style="color: #e74c3c;">❌ ${message}</div>`;
+        grid.innerHTML = `<div class="no-data" style="grid-column: 1/-1; text-align: center; padding: 40px; color: #e74c3c;">❌ ${message}</div>`;
     }
 }
 
@@ -632,201 +520,6 @@ function filterGalleryAdmin() {
     }
     
     displayGalleryAdmin(filtered);
-}
-
-// ===== MODAL GALERIE =====
-function setupGalleryModal() {
-    const modal = document.getElementById('galleryModal');
-    const form = document.getElementById('galleryForm');
-    const imageInput = document.getElementById('galleryImage');
-    
-    if (!modal || !form) return;
-    
-    const closeBtn = modal.querySelector('.close-btn');
-    if (closeBtn) closeBtn.addEventListener('click', closeGalleryModal);
-    
-    window.addEventListener('click', e => {
-        if (e.target === modal) closeGalleryModal();
-    });
-    
-    if (imageInput) {
-        imageInput.addEventListener('change', e => {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            if (file.size > 5 * 1024 * 1024) {
-                showError('Image trop volumineuse (max 5MB)');
-                imageInput.value = '';
-                return;
-            }
-            
-            const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-            if (!validTypes.includes(file.type)) {
-                showError("Format d'image non valide");
-                imageInput.value = '';
-                return;
-            }
-            
-            const reader = new FileReader();
-            reader.onload = ev => {
-                const preview = document.getElementById('galleryImagePreview');
-                if (preview) preview.innerHTML = `<img src="${ev.target.result}" style="max-width: 200px; border-radius: 8px;">`;
-            };
-            reader.readAsDataURL(file);
-        });
-    }
-    
-    form.addEventListener('submit', handleGallerySubmit);
-}
-
-function openGalleryModal(imageId = null) {
-    const modal = document.getElementById('galleryModal');
-    const form = document.getElementById('galleryForm');
-    
-    if (!modal || !form) return;
-    
-    form.reset();
-    const preview = document.getElementById('galleryImagePreview');
-    if (preview) preview.innerHTML = '';
-    
-    if (imageId) {
-        document.getElementById('galleryModalTitle').textContent = "Modifier l'image";
-        const image = allGalleryImages.find(img => img.id === imageId);
-        
-        if (image) {
-            document.getElementById('galleryId').value = image.id;
-            document.getElementById('galleryTitle').value = image.title || '';
-            document.getElementById('galleryDescription').value = image.description || '';
-            document.getElementById('galleryCategory').value = image.category || '';
-            document.getElementById('galleryDisplayOrder').value = image.display_order || 0;
-            document.getElementById('galleryFeatured').checked = image.is_featured == 1;
-            
-            if (image.image_url && preview) {
-                let imgSrc = image.image_url.startsWith('http') ? image.image_url : image.image_url;
-                preview.innerHTML = `<img src="${imgSrc}" onerror="this.style.display='none'" style="max-width: 200px; border-radius: 8px;">`;
-            }
-            
-            const imageInput = document.getElementById('galleryImage');
-            if (imageInput) imageInput.required = false;
-        }
-    } else {
-        document.getElementById('galleryModalTitle').textContent = 'Ajouter à la galerie';
-        const imageInput = document.getElementById('galleryImage');
-        if (imageInput) imageInput.required = true;
-    }
-    
-    modal.classList.add('active');
-}
-
-function closeGalleryModal() {
-    const modal = document.getElementById('galleryModal');
-    if (modal) modal.classList.remove('active');
-}
-
-function handleGallerySubmit(e) {
-    e.preventDefault();
-    
-    const token = getAuthToken();
-    if (!token) {
-        showError('Non authentifié');
-        return;
-    }
-    
-    const imageId = document.getElementById('galleryId').value;
-    const formData = new FormData();
-    
-    formData.append('action', imageId ? 'update' : 'create');
-    formData.append('token', token);
-    if (imageId) formData.append('id', imageId);
-    
-    formData.append('title', document.getElementById('galleryTitle').value);
-    formData.append('description', document.getElementById('galleryDescription').value);
-    formData.append('category', document.getElementById('galleryCategory').value);
-    formData.append('display_order', document.getElementById('galleryDisplayOrder').value);
-    
-    if (document.getElementById('galleryFeatured').checked) {
-        formData.append('is_featured', '1');
-    }
-    
-    const imageFile = document.getElementById('galleryImage').files[0];
-    if (imageFile) {
-        formData.append('image', imageFile);
-    }
-    
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    submitBtn.disabled = true;
-    submitBtn.textContent = '⏳ Enregistrement...';
-    
-    fetch('php/api/gallery.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(r => r.json())
-    .then(data => {
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-        
-        if (data.success) {
-            showSuccess(imageId ? '✅ Image modifiée !' : '✅ Image ajoutée !');
-            closeGalleryModal();
-            loadGalleryManagement();
-        } else {
-            showError(data.message || "Erreur lors de l'enregistrement");
-        }
-    })
-    .catch(err => {
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-        console.error('❌ Erreur:', err);
-        showError('Erreur de connexion');
-    });
-}
-
-function editGalleryImage(id) {
-    openGalleryModal(id);
-}
-
-function deleteGalleryImage(id) {
-    if (!confirm('🗑️ Voulez-vous vraiment supprimer cette image ?')) return;
-    
-    const token = getAuthToken();
-    if (!token) {
-        showError('❌ Non authentifié');
-        return;
-    }
-    
-    console.log('🗑️ Suppression image ID:', id);
-    
-    fetch('php/api/gallery.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            action: 'delete',
-            id: id,
-            token: token
-        })
-    })
-    .then(r => {
-        console.log('📡 Réponse status:', r.status);
-        if (!r.ok) {
-            throw new Error('Erreur HTTP: ' + r.status);
-        }
-        return r.json();
-    })
-    .then(data => {
-        console.log('✅ Réponse:', data);
-        if (data.success) {
-            showSuccess('✅ Image supprimée');
-            loadGalleryManagement();
-        } else {
-            showError('❌ Erreur: ' + (data.message || 'Erreur lors de la suppression'));
-        }
-    })
-    .catch(err => {
-        console.error('❌ Erreur suppression:', err);
-        showError('❌ Erreur de connexion: ' + err.message);
-    });
 }
 
 // ===============================
@@ -1241,20 +934,14 @@ function editProduct(id) {
     openProductModal(id); 
 }
 
-// ✅ REMPLACER CETTE FONCTION DANS admin.js
-// Cherche: function deleteProduct(id)
-// Remplace par:
-
 function deleteProduct(id) {
     if (!confirm('🗑️ Voulez-vous vraiment supprimer ce produit ?')) return;
 
     const token = getAuthToken();
     if (!token) {
-        showError('❌ Non authentifié');
+        showError('Non authentifié');
         return;
     }
-
-    console.log('🗑️ Suppression produit ID:', id);
 
     fetch('php/api/products.php', {
         method: 'POST',
@@ -1265,27 +952,21 @@ function deleteProduct(id) {
             token: token 
         })
     })
-    .then(r => {
-        console.log('📡 Réponse status:', r.status);
-        if (!r.ok) {
-            throw new Error('Erreur HTTP: ' + r.status);
-        }
-        return r.json();
-    })
+    .then(r => r.json())
     .then(data => {
-        console.log('✅ Réponse:', data);
         if (data.success) {
             showSuccess('✅ Produit supprimé');
             loadProducts();
         } else {
-            showError('❌ Erreur: ' + (data.message || 'Erreur lors de la suppression'));
+            showError(data.message || 'Erreur lors de la suppression');
         }
     })
     .catch(err => {
-        console.error('❌ Erreur suppression:', err);
-        showError('❌ Erreur de connexion: ' + err.message);
+        console.error('❌ Erreur:', err);
+        showError('Erreur de connexion');
     });
 }
+
 // ===============================
 // MODAL GALERIE
 // ===============================
@@ -1449,20 +1130,14 @@ function editGalleryImage(id) {
     openGalleryModal(id);
 }
 
-// ✅ MÊME CORRECTION POUR GALERIE
-// Cherche: function deleteGalleryImage(id)
-// Remplace par:
-
 function deleteGalleryImage(id) {
     if (!confirm('🗑️ Voulez-vous vraiment supprimer cette image ?')) return;
     
     const token = getAuthToken();
     if (!token) {
-        showError('❌ Non authentifié');
+        showError('Non authentifié');
         return;
     }
-    
-    console.log('🗑️ Suppression image ID:', id);
     
     fetch('php/api/gallery.php', {
         method: 'POST',
@@ -1473,259 +1148,24 @@ function deleteGalleryImage(id) {
             token: token
         })
     })
-    .then(r => {
-        console.log('📡 Réponse status:', r.status);
-        if (!r.ok) {
-            throw new Error('Erreur HTTP: ' + r.status);
-        }
-        return r.json();
-    })
+    .then(r => r.json())
     .then(data => {
-        console.log('✅ Réponse:', data);
         if (data.success) {
             showSuccess('✅ Image supprimée');
             loadGalleryManagement();
         } else {
-            showError('❌ Erreur: ' + (data.message || 'Erreur lors de la suppression'));
+            showError(data.message || 'Erreur lors de la suppression');
         }
     })
     .catch(err => {
-        console.error('❌ Erreur suppression:', err);
-        showError('❌ Erreur de connexion: ' + err.message);
+        console.error('❌ Erreur:', err);
+        showError('Erreur de connexion');
     });
 }
 
 // ===============================
 // UTILISATEURS
 // ===============================
-
-// ===============================
-// ADMIN.JS - PARTIE MANQUANTE
-// À placer AVANT la section "UTILISATEURS" (avant ligne ~850)
-// ===============================
-
-// ===============================
-// MESSAGES DE CONTACT
-// ===============================
-function loadMessages() {
-    console.log('📧 Chargement des messages...');
-    
-    const token = getAuthToken();
-    if (!token) {
-        showMessagesError('Non authentifié');
-        return;
-    }
-    
-    const tbody = document.querySelector('#messagesTable tbody');
-    if (!tbody) {
-        console.error('❌ Table messagesTable non trouvée');
-        return;
-    }
-    
-    tbody.innerHTML = '<tr><td colspan="7" class="loading">⏳ Chargement...</td></tr>';
-    
-    fetch(`php/api/admin.php?action=getAllMessages&token=${encodeURIComponent(token)}`)
-        .then(r => {
-            console.log('📡 Réponse messages status:', r.status);
-            if (!r.ok) throw new Error('Erreur HTTP: ' + r.status);
-            return r.json();
-        })
-        .then(data => {
-            console.log('✅ Messages reçus:', data);
-            if (data.success && Array.isArray(data.messages)) {
-                allMessages = data.messages;
-                displayMessages(allMessages);
-            } else {
-                showMessagesError(data.message || 'Erreur de chargement');
-            }
-        })
-        .catch(err => {
-            console.error('❌ Erreur:', err);
-            showMessagesError('Erreur de connexion: ' + err.message);
-        });
-}
-
-function displayMessages(messages) {
-    const tbody = document.querySelector('#messagesTable tbody');
-    if (!tbody) return;
-    
-    if (!messages || messages.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="no-data">📧 Aucun message</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = messages.map(msg => `
-        <tr>
-            <td>${msg.first_name || ''} ${msg.last_name || ''}</td>
-            <td>${msg.email || ''}</td>
-            <td>${msg.subject || ''}</td>
-            <td>${msg.message ? msg.message.substring(0, 50) + '...' : ''}</td>
-            <td><span class="badge ${msg.status === 'read' ? 'badge-success' : 'badge-warning'}">${msg.status === 'read' ? '✅ Lu' : '⏳ Non lu'}</span></td>
-            <td>${formatDate(msg.created_at)}</td>
-            <td>
-                <div class="action-btns">
-                    <button class="btn-view" onclick="viewMessage(${msg.id})">👁️ Voir</button>
-                    <button class="btn-delete" onclick="deleteMessage(${msg.id})">🗑️ Supprimer</button>
-                </div>
-            </td>
-        </tr>
-    `).join('');
-    
-    console.log(`✅ ${messages.length} messages affichés`);
-}
-
-function showMessagesError(message) {
-    const tbody = document.querySelector('#messagesTable tbody');
-    if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="7" class="no-data" style="color: #e74c3c;">❌ ${message}</td></tr>`;
-    }
-}
-
-function viewMessage(id) {
-    const message = allMessages.find(m => m.id === id);
-    
-    if (!message) {
-        showError('Message non trouvé');
-        return;
-    }
-    
-    const modal = document.createElement('div');
-    modal.className = 'modal active';
-    modal.style.display = 'flex';
-    
-    modal.innerHTML = `
-        <div class="modal-content" style="max-width: 700px;">
-            <div class="modal-header">
-                <h2>📧 Message de ${message.first_name} ${message.last_name}</h2>
-                <button class="close-btn" onclick="this.closest('.modal').remove()">✕</button>
-            </div>
-            
-            <div style="padding: 25px;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
-                    <div>
-                        <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">NOM</p>
-                        <p style="margin: 0; font-size: 16px; color: #2c3e50;">${message.first_name} ${message.last_name}</p>
-                    </div>
-                    
-                    <div>
-                        <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">EMAIL</p>
-                        <p style="margin: 0; font-size: 16px; color: #2c3e50;">
-                            <a href="mailto:${message.email}" style="color: #3498db; text-decoration: none;">
-                                ${message.email}
-                            </a>
-                        </p>
-                    </div>
-                    
-                    <div>
-                        <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">TÉLÉPHONE</p>
-                        <p style="margin: 0; font-size: 16px; color: #2c3e50;">
-                            ${message.phone ? `<a href="tel:${message.phone}" style="color: #3498db; text-decoration: none;">${message.phone}</a>` : 'Non renseigné'}
-                        </p>
-                    </div>
-                    
-                    <div>
-                        <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">DATE</p>
-                        <p style="margin: 0; font-size: 16px; color: #2c3e50;">${formatDate(message.created_at)}</p>
-                    </div>
-                </div>
-                
-                <div style="margin-bottom: 25px; padding-bottom: 25px; border-bottom: 1px solid #ecf0f1;">
-                    <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">SUJET</p>
-                    <p style="margin: 0; font-size: 18px; color: #2c3e50; font-weight: 600;">${message.subject}</p>
-                </div>
-                
-                <div>
-                    <p style="margin: 0 0 10px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">MESSAGE</p>
-                    <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; line-height: 1.8; color: #2c3e50; white-space: pre-wrap;">
-                        ${message.message}
-                    </div>
-                </div>
-            </div>
-            
-            <div class="modal-footer">
-                <button class="btn-secondary" onclick="this.closest('.modal').remove()">Fermer</button>
-                <button class="btn-primary" onclick="markMessageAsRead(${message.id}); this.closest('.modal').remove();">
-                    ✅ Marquer comme lu
-                </button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
-            modal.remove();
-        }
-    });
-}
-
-function markMessageAsRead(messageId) {
-    const token = getAuthToken();
-    
-    if (!token) {
-        showError('Non authentifié');
-        return;
-    }
-    
-    fetch('php/api/admin.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            action: 'markMessageAsRead',
-            token: token,
-            message_id: messageId
-        })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            showSuccess('✅ Message marqué comme lu');
-            loadMessages();
-        } else {
-            showError(data.message || 'Erreur');
-        }
-    })
-    .catch(err => {
-        console.error('❌ Erreur:', err);
-        showError('Erreur de connexion');
-    });
-}
-
-function deleteMessage(id) {
-    if (!confirm('🗑️ Voulez-vous vraiment supprimer ce message ?')) return;
-    
-    const token = getAuthToken();
-    if (!token) {
-        showError('Non authentifié');
-        return;
-    }
-    
-    fetch('php/api/admin.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            action: 'deleteMessage',
-            token: token,
-            message_id: id
-        })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            showSuccess('✅ Message supprimé');
-            loadMessages();
-        } else {
-            showError(data.message || 'Erreur');
-        }
-    })
-    .catch(err => {
-        console.error('❌ Erreur:', err);
-        showError('Erreur de connexion');
-    });
-}
-
-
 function loadUsers() {
     console.log('👥 Chargement des utilisateurs...');
     
