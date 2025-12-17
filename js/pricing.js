@@ -126,183 +126,171 @@ function displayDefaultPricing() {
     
     console.log('🎨 Affichage tarifs par défaut');
     
-    const defaultPricing = [
-        // HOMME
-        {
-            name: 'Costume Classique',
-            category: 'homme',
-            price: 180000,
-            features: [
-                'Consultation gratuite',
-                'Prise de mesures incluse',
-                'Tissus premium qualité',
-                'Design classique élégant',
-                'Retouches gratuites (30j)',
-                'Livraison offerte'
-            ],
-            featured: false
-        },
-        {
-            name: 'Costume Premium',
-            category: 'homme',
-            price: 280000,
-            features: [
-                'Consultation approfondie',
-                'Prise de mesures détaillée',
-                'Tissus luxe importés',
-                'Design sur mesure complet',
-                'Retouches illimitées (60j)',
-                'Livraison express offerte',
-                'Étui de rangement inclus'
-            ],
-            featured: true
-        },
-        {
-            name: 'Chemise Sur Mesure',
-            category: 'homme',
-            price: 85000,
-            features: [
-                'Consultation gratuite',
-                'Mesures précises',
-                'Tissus coton premium',
-                'Choix des détails',
-                'Retouches gratuites (30j)',
-                'Livraison offerte'
-            ],
-            featured: false
-        },
-        {
-            name: 'Ensemble Traditionnel',
-            category: 'homme',
-            price: 150000,
-            features: [
-                'Consultation gratuite',
-                'Prise de mesures incluse',
-                'Tissus traditionnels',
-                'Broderies artisanales',
-                'Retouches gratuites (30j)',
-                'Livraison offerte'
-            ],
-            featured: false
-        },
-        
-        // FEMME
-        {
-            name: 'Robe Élégante',
-            category: 'femme',
-            price: 150000,
-            features: [
-                'Consultation gratuite',
-                'Prise de mesures incluse',
-                'Tissus élégants',
-                'Design raffiné',
-                'Retouches gratuites (30j)',
-                'Livraison offerte'
-            ],
-            featured: false
-        },
-        {
-            name: 'Caftan de Luxe',
-            category: 'femme',
-            price: 250000,
-            features: [
-                'Consultation personnalisée',
-                'Mesures détaillées',
-                'Tissus luxueux importés',
-                'Broderies sur mesure',
-                'Retouches illimitées (60j)',
-                'Livraison express offerte',
-                'Housse de protection'
-            ],
-            featured: true
-        },
-        {
-            name: 'Robe de Soirée',
-            category: 'femme',
-            price: 200000,
-            features: [
-                'Consultation gratuite',
-                'Prise de mesures incluse',
-                'Tissus soirée premium',
-                'Design exclusif',
-                'Retouches gratuites (30j)',
-                'Livraison offerte'
-            ],
-            featured: false
-        },
-        {
-            name: 'Ensemble Traditionnel',
-            category: 'femme',
-            price: 180000,
-            features: [
-                'Consultation gratuite',
-                'Prise de mesures incluse',
-                'Tissus traditionnels',
-                'Broderies artisanales',
-                'Retouches gratuites (30j)',
-                'Livraison offerte'
-            ],
-            featured: false
-        },
-        
-        // ENFANT
-        {
-            name: 'Costume Enfant',
-            category: 'enfant',
-            price: 60000,
-            features: [
-                'Consultation gratuite',
-                'Mesures adaptées enfant',
-                'Tissus confortables',
-                'Design élégant',
-                'Retouches gratuites (30j)',
-                'Livraison offerte'
-            ],
-            featured: false
-        },
-        {
-            name: 'Robe Fillette',
-            category: 'enfant',
-            price: 48000,
-            features: [
-                'Consultation gratuite',
-                'Mesures adaptées',
-                'Tissus doux et confortables',
-                'Design adapté',
-                'Retouches gratuites (30j)',
-                'Livraison offerte'
-            ],
-            featured: false
-        },
-        {
-            name: 'Ensemble Cérémonie',
-            category: 'enfant',
-            price: 75000,
-            features: [
-                'Consultation gratuite',
-                'Prise de mesures incluse',
-                'Tissus premium',
-                'Design élégant',
-                'Retouches gratuites (30j)',
-                'Livraison offerte'
-            ],
-            featured: false
-        },
-        {
-            name: 'Tenue Traditionnelle',
-            category: 'enfant',
-            price: 55000,
-            features: [
-                'Consultation gratuite',
-                'Mesures adaptées',
-                'Tissus traditionnels',
-                'Design adapté',
-                'Retouches gratuites (30j)',
-                'Livraison offerte'
-            ],
-            featured: false
-        }
-    ];
+   const defaultPricing = [
+
+    // ===================== HOMME =====================
+    {
+        name: 'Grand Boubou Homme Brodé',
+        category: 'homme',
+        price: 75000,
+        features: [
+            'Consultation gratuite à l’atelier',
+            'Prise de mesures complète',
+            'Bazin riche ou tissu local',
+            'Broderie traditionnelle nigérienne',
+            'Retouches gratuites',
+            'Délai respecté'
+        ],
+        featured: true
+    },
+    {
+        name: 'Boubou Blanc de Prière',
+        category: 'homme',
+        price: 45000,
+        features: [
+            'Consultation gratuite',
+            'Mesures précises',
+            'Tissu blanc adapté à la prière',
+            'Coupe simple et élégante',
+            'Retouches gratuites'
+        ],
+        featured: false
+    },
+    {
+        name: 'Tenue Moderne Homme',
+        category: 'homme',
+        price: 60000,
+        features: [
+            'Consultation gratuite',
+            'Prise de mesures incluse',
+            'Design moderne nigérien',
+            'Tissu adapté au climat',
+            'Retouches gratuites'
+        ],
+        featured: false
+    },
+    {
+        name: 'Uniforme de Travail Homme',
+        category: 'homme',
+        price: 30000,
+        features: [
+            'Commande individuelle ou en quantité',
+            'Prise de mesures',
+            'Tissu résistant',
+            'Couture solide',
+            'Prix réduit pour grandes quantités'
+        ],
+        featured: false
+    },
+
+    // ===================== FEMME =====================
+    {
+        name: 'Robe Femme en Pagne',
+        category: 'femme',
+        price: 50000,
+        features: [
+            'Consultation gratuite',
+            'Mesures sur place',
+            'Pagne africain au choix',
+            'Coupe traditionnelle ou moderne',
+            'Retouches gratuites'
+        ],
+        featured: true
+    },
+    {
+        name: 'Ensemble Femme Moderne',
+        category: 'femme',
+        price: 65000,
+        features: [
+            'Consultation gratuite',
+            'Prise de mesures',
+            'Design moderne adapté',
+            'Tissu confortable',
+            'Retouches gratuites'
+        ],
+        featured: false
+    },
+    {
+        name: 'Robe de Mariage Traditionnel',
+        category: 'femme',
+        price: 150000,
+        features: [
+            'Consultation personnalisée',
+            'Mesures détaillées',
+            'Design mariage nigérien',
+            'Broderies artisanales',
+            'Retouches incluses'
+        ],
+        featured: true
+    },
+    {
+        name: 'Uniforme Femme (École / Travail)',
+        category: 'femme',
+        price: 28000,
+        features: [
+            'Commande à l’unité ou en série',
+            'Mesures adaptées',
+            'Tissu durable',
+            'Couture professionnelle',
+            'Prix accessible'
+        ],
+        featured: false
+    },
+
+    // ===================== ENFANT =====================
+    {
+        name: 'Boubou Enfant Traditionnel',
+        category: 'enfant',
+        price: 30000,
+        features: [
+            'Mesures adaptées enfant',
+            'Tissu confortable',
+            'Design traditionnel',
+            'Couture solide',
+            'Retouches incluses'
+        ],
+        featured: false
+    },
+    {
+        name: 'Uniforme Scolaire',
+        category: 'enfant',
+        price: 20000,
+        features: [
+            'Uniforme école publique ou privée',
+            'Mesures précises',
+            'Tissu résistant',
+            'Couture durable',
+            'Prix abordable'
+        ],
+        featured: true
+    },
+    {
+        name: 'Tenue de Baptême',
+        category: 'enfant',
+        price: 35000,
+        features: [
+            'Consultation gratuite',
+            'Tissu blanc ou clair',
+            'Coupe élégante',
+            'Confort pour enfant',
+            'Retouches incluses'
+        ],
+        featured: false
+    },
+    {
+        name: 'Tenue de Fête Enfant',
+        category: 'enfant',
+        price: 28000,
+        features: [
+            'Design festif',
+            'Tissu coloré',
+            'Mesures adaptées',
+            'Couture confortable',
+            'Retouches incluses'
+        ],
+        featured: false
+    }
+];
     
     pricingGrid.innerHTML = defaultPricing.map(item => `
         <div class="pricing-card ${item.featured ? 'featured' : ''}" data-category="${item.category}">
