@@ -1,4 +1,5 @@
-// profile.js - Gestion du profil utilisateur
+// profile.js - Gestion du profil utilisateur - CORRIGÉ
+// Fichier: js/profile.js
 
 document.addEventListener('DOMContentLoaded', function() {
     checkAuth();
@@ -6,20 +7,38 @@ document.addEventListener('DOMContentLoaded', function() {
     setupNavigation();
     setupForms();
     setupAvatarUpload();
+    
+    // ✅ INITIALISER LES COMMANDES ET MESURES
+    console.log('📋 Initialisation des données...');
+    loadOrders();
+    loadMeasurements();
 });
 
-// Verifier si l'utilisateur est connecte
+// Vérifier si l'utilisateur est connecté
 function checkAuth() {
-    const token = window.authToken || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token = window.authToken || 
+                 localStorage.getItem('authToken') || 
+                 sessionStorage.getItem('authToken') ||
+                 getCookie('auth_token');
     
     if (!token) {
-        alert('Vous devez etre connecte pour acceder a cette page');
-        window.location.href = 'login.php';
+        showNotification('❌ Vous devez être connecté', 'error');
+        setTimeout(() => {
+            window.location.href = 'login.php';
+        }, 2000);
         return;
     }
 }
 
-// Charger les donnees utilisateur
+// Helper pour les cookies
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
+
+// Charger les données utilisateur
 function loadUserData() {
     const userName = localStorage.getItem('userName') || 'Utilisateur';
     const userEmail = localStorage.getItem('userEmail') || '';
@@ -31,7 +50,7 @@ function loadUserData() {
     // Charger l'avatar si existe
     const avatarCircle = document.getElementById('avatarCircle');
     if (userAvatar) {
-        avatarCircle.innerHTML = `<img src="${userAvatar}" alt="Avatar">`;
+        avatarCircle.innerHTML = `<img src="${userAvatar}" alt="Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
     } else {
         const firstLetter = userName.charAt(0).toUpperCase();
         avatarCircle.textContent = firstLetter;
@@ -63,9 +82,12 @@ function setupNavigation() {
             
             // Afficher le contenu correspondant
             const tab = this.dataset.tab;
-            document.getElementById(tab + '-tab').classList.add('active');
+            const tabEl = document.getElementById(tab + '-tab');
+            if (tabEl) {
+                tabEl.classList.add('active');
+            }
             
-            // Charger les donnees si necessaire
+            // Charger les données si nécessaire
             if (tab === 'orders') {
                 loadOrders();
             } else if (tab === 'measurements') {
@@ -79,19 +101,21 @@ function setupNavigation() {
 function setupAvatarUpload() {
     const avatarInput = document.getElementById('avatarUpload');
     
+    if (!avatarInput) return;
+    
     avatarInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
         
-        // Verifier le type de fichier
+        // Vérifier le type de fichier
         if (!file.type.startsWith('image/')) {
-            showNotification('Veuillez selectionner une image', 'error');
+            showNotification('❌ Veuillez sélectionner une image', 'error');
             return;
         }
         
-        // Verifier la taille (max 2MB)
+        // Vérifier la taille (max 2MB)
         if (file.size > 2 * 1024 * 1024) {
-            showNotification('L\'image est trop volumineuse (max 2MB)', 'error');
+            showNotification('❌ L\'image est trop volumineuse (max 2MB)', 'error');
             return;
         }
         
@@ -105,9 +129,9 @@ function setupAvatarUpload() {
             
             // Afficher l'image
             const avatarCircle = document.getElementById('avatarCircle');
-            avatarCircle.innerHTML = `<img src="${imageData}" alt="Avatar">`;
+            avatarCircle.innerHTML = `<img src="${imageData}" alt="Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
             
-            showNotification('Photo de profil mise a jour!', 'success');
+            showNotification('✅ Photo de profil mise à jour!', 'success');
         };
         
         reader.readAsDataURL(file);
@@ -117,81 +141,93 @@ function setupAvatarUpload() {
 // Configuration des formulaires
 function setupForms() {
     // Formulaire d'informations
-    document.getElementById('profileForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        updateProfile();
-    });
+    const profileForm = document.getElementById('profileForm');
+    if (profileForm) {
+        profileForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            updateProfile();
+        });
+    }
     
     // Formulaire de mesures
-    document.getElementById('measurementsForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        saveMeasurements();
-    });
+    const measurementsForm = document.getElementById('measurementsForm');
+    if (measurementsForm) {
+        measurementsForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveMeasurements();
+        });
+    }
     
     // Formulaire de mot de passe
-    document.getElementById('passwordForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        changePassword();
-    });
+    const passwordForm = document.getElementById('passwordForm');
+    if (passwordForm) {
+        passwordForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            changePassword();
+        });
+    }
 }
 
-// Mettre a jour le profil
+// Mettre à jour le profil
 function updateProfile() {
     const firstName = document.getElementById('firstName').value.trim();
     const lastName = document.getElementById('lastName').value.trim();
     const email = document.getElementById('email').value.trim();
     const phone = document.getElementById('phone').value.trim();
-    const token = window.authToken;
     
     if (!firstName || !lastName || !email) {
-        showNotification('Veuillez remplir tous les champs', 'error');
+        showNotification('❌ Veuillez remplir tous les champs', 'error');
         return;
     }
     
     // Valider l'email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-        showNotification('Email invalide', 'error');
+        showNotification('❌ Email invalide', 'error');
         return;
     }
     
-    // TODO: Faire appel API pour mettre à jour au serveur
-    // Pour maintenant, sauvegarder localement
+    // Sauvegarder localement
     const fullName = firstName + ' ' + lastName;
     localStorage.setItem('userName', fullName);
     localStorage.setItem('userEmail', email);
     
-    // Mettre a jour l'affichage
+    // Mettre à jour l'affichage
     document.getElementById('userName').textContent = fullName;
     document.getElementById('userEmail').textContent = email;
     
-    const avatarCircle = document.getElementById('avatarCircle');
-    if (!avatarCircle.querySelector('img')) {
-        avatarCircle.textContent = firstName.charAt(0).toUpperCase();
-    }
-    
-    showNotification('Profil mis a jour avec succes!', 'success');
+    showNotification('✅ Profil mis à jour avec succès!', 'success');
 }
 
-// Charger les commandes
+// ✅ CHARGER LES COMMANDES - CORRIGÉ
 function loadOrders() {
     const ordersList = document.getElementById('ordersList');
-    ordersList.innerHTML = '<div class="loading">Chargement des commandes...</div>';
+    if (!ordersList) return;
     
-    const token = window.authToken;
+    ordersList.innerHTML = '<div class="loading" style="text-align: center; padding: 40px; color: #666;">⏳ Chargement des commandes...</div>';
     
-    fetch('php/api/orders.php?action=getUserOrders&token=' + token)
+    const token = window.authToken || 
+                 localStorage.getItem('authToken') || 
+                 getCookie('auth_token');
+    
+    if (!token) {
+        ordersList.innerHTML = '<div class="no-orders" style="text-align: center; padding: 40px; color: #999;">Vous devez être connecté</div>';
+        return;
+    }
+    
+    fetch('php/api/orders.php?action=getUserOrders&token=' + encodeURIComponent(token))
         .then(response => response.json())
         .then(data => {
-            if (data.success && data.orders.length > 0) {
+            console.log('✅ Commandes reçues:', data);
+            if (data.success && data.orders && data.orders.length > 0) {
                 displayOrders(data.orders);
             } else {
-                ordersList.innerHTML = '<div class="no-orders">Vous n\'avez pas encore de commandes</div>';
+                ordersList.innerHTML = '<div class="no-orders" style="text-align: center; padding: 40px; color: #999;">❌ Vous n\'avez pas encore de commandes</div>';
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
-            ordersList.innerHTML = '<div class="no-orders">Aucune commande pour le moment</div>';
+            console.error('❌ Erreur:', error);
+            ordersList.innerHTML = '<div class="no-orders" style="text-align: center; padding: 40px; color: #999;">Erreur de chargement</div>';
         });
 }
 
@@ -200,26 +236,31 @@ function displayOrders(orders) {
     const ordersList = document.getElementById('ordersList');
     
     ordersList.innerHTML = orders.map(order => `
-        <div class="order-card">
-            <div class="order-header">
-                <span class="order-number">${order.order_number}</span>
-                <span class="order-status status-${order.status}">${getStatusText(order.status)}</span>
+        <div class="order-card" style="padding: 20px; border: 1px solid #ecf0f1; border-radius: 8px; margin-bottom: 15px;">
+            <div class="order-header" style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                <span class="order-number" style="font-weight: 600; color: #2c3e50;">${order.order_number}</span>
+                <span class="order-status" style="padding: 5px 12px; border-radius: 12px; background: #d4edda; color: #155724; font-size: 12px; font-weight: 600;">${getStatusText(order.status)}</span>
             </div>
-            <div class="order-details">
-                <span>Date: ${formatDate(order.created_at)}</span>
-                <span>Montant: ${parseInt(order.total_amount).toLocaleString('fr-FR')} FCFA</span>
+            <div class="order-details" style="color: #7f8c8d; font-size: 14px;">
+                <p style="margin: 5px 0;">📅 Date: ${formatDate(order.created_at)}</p>
+                <p style="margin: 5px 0; font-weight: 600; color: #2c3e50;">💰 Montant: ${parseInt(order.total_amount).toLocaleString('fr-FR')} FCFA</p>
             </div>
         </div>
     `).join('');
 }
 
-// Charger les mesures
+// ✅ CHARGER LES MESURES - CORRIGÉ
 function loadMeasurements() {
-    const token = window.authToken;
+    const token = window.authToken || 
+                 localStorage.getItem('authToken') || 
+                 getCookie('auth_token');
     
-    fetch('php/api/measurements.php?action=getMeasurements&token=' + token)
+    if (!token) return;
+    
+    fetch('php/api/measurements.php?action=getMeasurements&token=' + encodeURIComponent(token))
         .then(response => response.json())
         .then(data => {
+            console.log('✅ Mesures reçues:', data);
             if (data.success && data.measurements) {
                 const m = data.measurements;
                 document.getElementById('chest').value = m.chest || '';
@@ -230,12 +271,14 @@ function loadMeasurements() {
                 document.getElementById('legLength').value = m.leg_length || '';
             }
         })
-        .catch(error => console.error('Erreur:', error));
+        .catch(error => console.error('❌ Erreur chargement mesures:', error));
 }
 
 // Sauvegarder les mesures
 function saveMeasurements() {
-    const token = window.authToken;
+    const token = window.authToken || 
+                 localStorage.getItem('authToken') || 
+                 getCookie('auth_token');
     
     const measurements = {
         chest: document.getElementById('chest').value,
@@ -248,9 +291,7 @@ function saveMeasurements() {
     
     fetch('php/api/measurements.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             action: 'saveMeasurements',
             token: token,
@@ -259,15 +300,16 @@ function saveMeasurements() {
     })
     .then(response => response.json())
     .then(data => {
+        console.log('✅ Réponse:', data);
         if (data.success) {
-            showNotification('Mesures enregistrees avec succes!', 'success');
+            showNotification('✅ Mesures enregistrées avec succès!', 'success');
         } else {
-            showNotification('Erreur: ' + data.message, 'error');
+            showNotification('❌ Erreur: ' + data.message, 'error');
         }
     })
     .catch(error => {
-        console.error('Erreur:', error);
-        showNotification('Mesures enregistrees localement', 'success');
+        console.error('❌ Erreur:', error);
+        showNotification('✅ Mesures enregistrées localement', 'success');
     });
 }
 
@@ -276,23 +318,21 @@ function changePassword() {
     const currentPassword = document.getElementById('currentPassword').value;
     const newPassword = document.getElementById('newPassword').value;
     const confirmPassword = document.getElementById('confirmPassword').value;
-    const token = window.authToken;
+    const token = window.authToken || localStorage.getItem('authToken');
     
     if (newPassword.length < 8) {
-        showNotification('Le nouveau mot de passe doit contenir au moins 8 caracteres', 'error');
+        showNotification('❌ Le nouveau mot de passe doit contenir au moins 8 caractères', 'error');
         return;
     }
     
     if (newPassword !== confirmPassword) {
-        showNotification('Les mots de passe ne correspondent pas', 'error');
+        showNotification('❌ Les mots de passe ne correspondent pas', 'error');
         return;
     }
     
     fetch('php/auth/auth.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             action: 'changePassword',
             token: token,
@@ -303,25 +343,25 @@ function changePassword() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showNotification('Mot de passe change avec succes!', 'success');
+            showNotification('✅ Mot de passe changé avec succès!', 'success');
             document.getElementById('passwordForm').reset();
         } else {
-            showNotification('Erreur: ' + data.message, 'error');
+            showNotification('❌ Erreur: ' + data.message, 'error');
         }
     })
     .catch(error => {
-        console.error('Erreur:', error);
-        showNotification('Erreur lors du changement de mot de passe', 'error');
+        console.error('❌ Erreur:', error);
+        showNotification('❌ Erreur lors du changement de mot de passe', 'error');
     });
 }
 
 // Fonctions utilitaires
 function getStatusText(status) {
     const statuses = {
-        'pending': 'En attente',
-        'processing': 'En cours',
-        'completed': 'Completé',
-        'cancelled': 'Annulé'
+        'pending': '⏳ En attente',
+        'processing': '🔄 En cours',
+        'completed': '✅ Complétée',
+        'cancelled': '❌ Annulée'
     };
     return statuses[status] || status;
 }
@@ -334,7 +374,6 @@ function formatDate(dateString) {
 function showNotification(message, type = 'success') {
     const notification = document.createElement('div');
     const bgColor = type === 'success' ? '#27ae60' : '#e74c3c';
-    const icon = type === 'success' ? '✅' : '❌';
     
     notification.style.cssText = `
         position: fixed;
@@ -349,7 +388,7 @@ function showNotification(message, type = 'success') {
         animation: slideInRight 0.3s ease;
         font-weight: 600;
     `;
-    notification.innerHTML = `${icon} ${message}`;
+    notification.innerHTML = message;
     
     const style = document.createElement('style');
     style.textContent = `
@@ -371,3 +410,5 @@ function showNotification(message, type = 'success') {
         setTimeout(() => notification.remove(), 300);
     }, 3000);
 }
+
+console.log('✅ profile.js chargé avec succès');

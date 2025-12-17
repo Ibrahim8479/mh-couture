@@ -1,6 +1,6 @@
 // ===============================
-// CUSTOM-DESIGNS.JS - VERSION FINALE
-// Gestion des commandes sur mesure
+// CUSTOM-DESIGNS.JS - VERSION CORRIGÉE
+// Gestion des commandes sur mesure avec token
 // Fichier: js/custom-designs.js
 // ===============================
 
@@ -17,14 +17,18 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCartCount();
 });
 
-// Soumettre la commande sur mesure
+// ✅ FONCTION CORRIGÉE - Envoie le token
 async function handleCustomOrderSubmit(e) {
     e.preventDefault();
     
-    const token = window.authToken || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    // ✅ RÉCUPÉRER LE TOKEN CORRECTEMENT
+    const token = window.authToken || 
+                 localStorage.getItem('authToken') || 
+                 sessionStorage.getItem('authToken') ||
+                 getCookie('auth_token');
     
     if (!token) {
-        showError('Vous devez être connecté pour passer une commande');
+        showError('❌ Vous devez être connecté pour passer une commande');
         setTimeout(() => {
             window.location.href = 'login.php';
         }, 2000);
@@ -62,6 +66,7 @@ async function handleCustomOrderSubmit(e) {
     // Préparer les données
     const orderData = {
         action: 'createCustomOrder',
+        token: token, // ✅ AJOUTER LE TOKEN!
         fullName: fullName,
         email: email,
         phone: phone,
@@ -72,7 +77,7 @@ async function handleCustomOrderSubmit(e) {
         description: description,
         hasMeasurements: hasMeasurements,
         deadline: deadline || null,
-        images: [] // Pour l'instant, pas d'upload d'images
+        images: []
     };
     
     console.log('📤 Envoi commande sur mesure:', orderData);
@@ -89,24 +94,25 @@ async function handleCustomOrderSubmit(e) {
             headers: {
                 'Content-Type': 'application/json',
             },
+            credentials: 'include',
             body: JSON.stringify(orderData)
         });
         
         console.log('📡 Réponse status:', response.status);
         
         const data = await response.json();
-        console.log('📥 Réponse data:', data);
+        console.log('✅ Réponse data:', data);
         
         if (data.success) {
-            showSuccess('✅ Commande envoyée avec succès ! Numéro: ' + data.order_number);
+            showSuccess('✅ Commande envoyée avec succès! Numéro: ' + data.order_number);
             
             // Réinitialiser le formulaire
             e.target.reset();
             
-            // Rediriger après 2 secondes
+            // Rediriger après 3 secondes
             setTimeout(() => {
                 window.location.href = 'index.php';
-            }, 2000);
+            }, 3000);
         } else {
             showError('❌ Erreur: ' + (data.message || 'Erreur inconnue'));
         }
@@ -122,7 +128,10 @@ async function handleCustomOrderSubmit(e) {
 
 // Mettre à jour le compteur du panier
 function updateCartCount() {
-    const token = window.authToken || localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token = window.authToken || 
+                 localStorage.getItem('authToken') || 
+                 sessionStorage.getItem('authToken') ||
+                 getCookie('auth_token');
     
     if (!token) return;
     
@@ -136,7 +145,15 @@ function updateCartCount() {
                 }
             }
         })
-        .catch(error => console.error('Erreur compteur panier:', error));
+        .catch(error => console.error('❌ Erreur compteur panier:', error));
+}
+
+// Helper pour les cookies
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
 }
 
 // Afficher un message de succès
@@ -154,7 +171,6 @@ function showSuccess(message) {
         z-index: 10000;
         font-weight: 600;
         animation: slideIn 0.3s ease;
-        max-width: 400px;
     `;
     notification.textContent = message;
     
@@ -181,7 +197,6 @@ function showError(message) {
         z-index: 10000;
         font-weight: 600;
         animation: slideIn 0.3s ease;
-        max-width: 400px;
     `;
     notification.textContent = message;
     
@@ -190,7 +205,7 @@ function showError(message) {
     setTimeout(() => {
         notification.style.animation = 'slideOut 0.3s ease';
         setTimeout(() => notification.remove(), 300);
-    }, 3000);
+    }, 5000);
 }
 
 // Animations CSS

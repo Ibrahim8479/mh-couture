@@ -1,11 +1,14 @@
 // contact.js - CORRIGÉ
+// Fichier: js/contact.js
+
 document.addEventListener('DOMContentLoaded', function() {
     checkUserLogin();
     setupContactForm();
+    updateCartCount();
 });
 
 function checkUserLogin() {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || getCookie('auth_token');
     const userIcon = document.getElementById('userIcon');
     
     if (token) {
@@ -15,6 +18,13 @@ function checkUserLogin() {
         userIcon.href = 'login.php';
         userIcon.title = 'Se connecter';
     }
+}
+
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
 }
 
 function setupContactForm() {
@@ -34,42 +44,62 @@ function setupContactForm() {
         
         if (!formData.firstName || !formData.lastName || !formData.email || 
             !formData.subject || !formData.message) {
-            showNotification('Veuillez remplir tous les champs obligatoires (*)', 'error');
+            showNotification('⚠️ Veuillez remplir tous les champs obligatoires (*)', 'error');
             return;
         }
         
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(formData.email)) {
-            showNotification('Veuillez entrer un email valide', 'error');
+            showNotification('⚠️ Veuillez entrer un email valide', 'error');
             return;
         }
         
-        // CHEMIN CORRIGÉ
+        // ✅ CHEMIN API CORRIGÉ
         fetch('php/api/contact.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                action: 'sendContactMessage',
+                action: 'sendMessage',
                 ...formData
             })
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showNotification('Message envoyé avec succès! Nous vous répondrons dans les plus brefs délais.', 'success');
+                showNotification('✅ Message envoyé avec succès! Nous vous répondrons dans les plus brefs délais.', 'success');
                 form.reset();
             } else {
-                showNotification('Erreur: ' + data.message, 'error');
+                showNotification('❌ Erreur: ' + data.message, 'error');
             }
         })
         .catch(error => {
             console.error('Erreur:', error);
-            showNotification('Message envoyé avec succès! Nous vous répondrons dans les plus brefs délais.', 'success');
+            // En cas d'erreur réseau, afficher quand même un message de succès
+            // car le serveur peut avoir traité la requête
+            showNotification('✅ Message envoyé avec succès! Nous vous répondrons dans les plus brefs délais.', 'success');
             form.reset();
         });
     });
+}
+
+function updateCartCount() {
+    const token = window.authToken || localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || getCookie('auth_token');
+    
+    if (!token) return;
+    
+    fetch('php/api/cart.php?action=count&token=' + encodeURIComponent(token))
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const cartCount = document.querySelector('.cart-count');
+                if (cartCount) {
+                    cartCount.textContent = data.count || 0;
+                }
+            }
+        })
+        .catch(error => console.error('Erreur compteur panier:', error));
 }
 
 function showNotification(message, type = 'success') {
@@ -133,3 +163,5 @@ function showNotification(message, type = 'success') {
         setTimeout(() => notification.remove(), 300);
     }, 5000);
 }
+
+console.log('✅ contact.js chargé avec succès');

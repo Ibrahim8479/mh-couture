@@ -1,4 +1,4 @@
-// login.js - Updated with Admin Redirect
+// login.js - Updated with Admin Redirect - CORRIGÉ
 // Fichier: js/login.js
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -29,7 +29,7 @@ function setCookie(name, value, days) {
         date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
         expires = "; expires=" + date.toUTCString();
     }
-    document.cookie = name + "=" + (value || "") + expires + "; path=/";
+    document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Strict";
 }
 
 // Configuration du formulaire de connexion
@@ -39,10 +39,10 @@ function setupLoginForm() {
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        // Réinitialiser les messages d'erreur
+        // RÉinitialiser les messages d'erreur
         clearErrors();
         
-        // Récupérer les valeurs
+        // RÉcupérer les valeurs
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
         const remember = document.querySelector('input[name="remember"]').checked;
@@ -58,7 +58,7 @@ function setupLoginForm() {
             return;
         }
         
-        // Désactiver le bouton pendant la soumission
+        // DÉsactiver le bouton pendant la soumission
         const submitBtn = form.querySelector('.btn-submit');
         const originalText = submitBtn.textContent;
         submitBtn.disabled = true;
@@ -70,6 +70,7 @@ function setupLoginForm() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                credentials: 'include', // Important pour les cookies
                 body: JSON.stringify({
                     action: 'login',
                     email: email,
@@ -92,14 +93,14 @@ function setupLoginForm() {
                 localStorage.setItem('isAdmin', data.isAdmin ? '1' : '0');
                 
                 // Afficher un message de succès
-                showSuccessMessage('Connexion réussie! Redirection...');
+                showSuccessMessage('✅ Connexion réussie! Redirection...');
                 
-                // Rediriger après 1 seconde
+                // ✅ REDIRECTION CORRIGÉE - Utiliser l'URL fournie par le serveur
                 setTimeout(() => {
-                    // Utiliser l'URL de redirection fournie par le serveur
                     const redirectUrl = data.redirectUrl || 'collections.php';
+                    console.log('🔄 Redirection vers:', redirectUrl);
                     window.location.href = redirectUrl;
-                }, 1000);
+                }, 1500);
                 
             } else {
                 // Afficher l'erreur
@@ -126,13 +127,13 @@ function setupSocialLogin() {
     // Bouton Google
     document.querySelector('.btn-google')?.addEventListener('click', function(e) {
         e.preventDefault();
-        alert('La connexion avec Google sera bientôt disponible');
+        showNotification('ℹ️ La connexion avec Google sera bientôt disponible');
     });
     
     // Bouton Facebook
     document.querySelector('.btn-facebook')?.addEventListener('click', function(e) {
         e.preventDefault();
-        alert('La connexion avec Facebook sera bientôt disponible');
+        showNotification('ℹ️ La connexion avec Facebook sera bientôt disponible');
     });
 }
 
@@ -163,7 +164,7 @@ function clearErrors() {
         el.style.display = 'none';
     });
     
-    document.querySelectorAll('input').forEach(input => {
+    document.querySelectorAll('input[type="email"], input[type="password"]').forEach(input => {
         input.style.borderColor = '#e0e0e0';
     });
 }
@@ -184,13 +185,38 @@ function showSuccessMessage(message) {
         animation: slideInRight 0.3s ease;
         font-weight: 600;
     `;
-    successDiv.innerHTML = `✅ ${message}`;
+    successDiv.innerHTML = message;
     
     document.body.appendChild(successDiv);
     
     setTimeout(() => {
         successDiv.style.animation = 'slideOutRight 0.3s ease';
         setTimeout(() => successDiv.remove(), 300);
+    }, 3000);
+}
+
+// Afficher une notification simple
+function showNotification(message) {
+    const notifDiv = document.createElement('div');
+    notifDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #3498db;
+        color: white;
+        padding: 15px 25px;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        z-index: 10000;
+        animation: slideInRight 0.3s ease;
+    `;
+    notifDiv.textContent = message;
+    
+    document.body.appendChild(notifDiv);
+    
+    setTimeout(() => {
+        notifDiv.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => notifDiv.remove(), 300);
     }, 3000);
 }
 
@@ -219,3 +245,5 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+console.log('✅ login.js chargé avec succès');

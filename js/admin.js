@@ -490,14 +490,20 @@ function editProduct(id) {
     openProductModal(id); 
 }
 
+// ✅ REMPLACER CETTE FONCTION DANS admin.js
+// Cherche: function deleteProduct(id)
+// Remplace par:
+
 function deleteProduct(id) {
     if (!confirm('🗑️ Voulez-vous vraiment supprimer ce produit ?')) return;
 
     const token = getAuthToken();
     if (!token) {
-        showError('Non authentifié');
+        showError('❌ Non authentifié');
         return;
     }
+
+    console.log('🗑️ Suppression produit ID:', id);
 
     fetch('php/api/products.php', {
         method: 'POST',
@@ -508,21 +514,27 @@ function deleteProduct(id) {
             token: token 
         })
     })
-    .then(r => r.json())
+    .then(r => {
+        console.log('📡 Réponse status:', r.status);
+        if (!r.ok) {
+            throw new Error('Erreur HTTP: ' + r.status);
+        }
+        return r.json();
+    })
     .then(data => {
+        console.log('✅ Réponse:', data);
         if (data.success) {
             showSuccess('✅ Produit supprimé');
             loadProducts();
         } else {
-            showError(data.message || 'Erreur lors de la suppression');
+            showError('❌ Erreur: ' + (data.message || 'Erreur lors de la suppression'));
         }
     })
     .catch(err => {
-        console.error('❌ Erreur:', err);
-        showError('Erreur de connexion');
+        console.error('❌ Erreur suppression:', err);
+        showError('❌ Erreur de connexion: ' + err.message);
     });
 }
-
 // ===============================
 // GALERIE
 // ===============================
@@ -780,9 +792,11 @@ function deleteGalleryImage(id) {
     
     const token = getAuthToken();
     if (!token) {
-        showError('Non authentifié');
+        showError('❌ Non authentifié');
         return;
     }
+    
+    console.log('🗑️ Suppression image ID:', id);
     
     fetch('php/api/gallery.php', {
         method: 'POST',
@@ -793,18 +807,25 @@ function deleteGalleryImage(id) {
             token: token
         })
     })
-    .then(r => r.json())
+    .then(r => {
+        console.log('📡 Réponse status:', r.status);
+        if (!r.ok) {
+            throw new Error('Erreur HTTP: ' + r.status);
+        }
+        return r.json();
+    })
     .then(data => {
+        console.log('✅ Réponse:', data);
         if (data.success) {
             showSuccess('✅ Image supprimée');
             loadGalleryManagement();
         } else {
-            showError(data.message || 'Erreur lors de la suppression');
+            showError('❌ Erreur: ' + (data.message || 'Erreur lors de la suppression'));
         }
     })
     .catch(err => {
-        console.error('❌ Erreur:', err);
-        showError('Erreur de connexion');
+        console.error('❌ Erreur suppression:', err);
+        showError('❌ Erreur de connexion: ' + err.message);
     });
 }
 
@@ -1220,14 +1241,20 @@ function editProduct(id) {
     openProductModal(id); 
 }
 
+// ✅ REMPLACER CETTE FONCTION DANS admin.js
+// Cherche: function deleteProduct(id)
+// Remplace par:
+
 function deleteProduct(id) {
     if (!confirm('🗑️ Voulez-vous vraiment supprimer ce produit ?')) return;
 
     const token = getAuthToken();
     if (!token) {
-        showError('Non authentifié');
+        showError('❌ Non authentifié');
         return;
     }
+
+    console.log('🗑️ Suppression produit ID:', id);
 
     fetch('php/api/products.php', {
         method: 'POST',
@@ -1238,21 +1265,27 @@ function deleteProduct(id) {
             token: token 
         })
     })
-    .then(r => r.json())
+    .then(r => {
+        console.log('📡 Réponse status:', r.status);
+        if (!r.ok) {
+            throw new Error('Erreur HTTP: ' + r.status);
+        }
+        return r.json();
+    })
     .then(data => {
+        console.log('✅ Réponse:', data);
         if (data.success) {
             showSuccess('✅ Produit supprimé');
             loadProducts();
         } else {
-            showError(data.message || 'Erreur lors de la suppression');
+            showError('❌ Erreur: ' + (data.message || 'Erreur lors de la suppression'));
         }
     })
     .catch(err => {
-        console.error('❌ Erreur:', err);
-        showError('Erreur de connexion');
+        console.error('❌ Erreur suppression:', err);
+        showError('❌ Erreur de connexion: ' + err.message);
     });
 }
-
 // ===============================
 // MODAL GALERIE
 // ===============================
@@ -1416,14 +1449,20 @@ function editGalleryImage(id) {
     openGalleryModal(id);
 }
 
+// ✅ MÊME CORRECTION POUR GALERIE
+// Cherche: function deleteGalleryImage(id)
+// Remplace par:
+
 function deleteGalleryImage(id) {
     if (!confirm('🗑️ Voulez-vous vraiment supprimer cette image ?')) return;
     
     const token = getAuthToken();
     if (!token) {
-        showError('Non authentifié');
+        showError('❌ Non authentifié');
         return;
     }
+    
+    console.log('🗑️ Suppression image ID:', id);
     
     fetch('php/api/gallery.php', {
         method: 'POST',
@@ -1434,13 +1473,217 @@ function deleteGalleryImage(id) {
             token: token
         })
     })
-    .then(r => r.json())
+    .then(r => {
+        console.log('📡 Réponse status:', r.status);
+        if (!r.ok) {
+            throw new Error('Erreur HTTP: ' + r.status);
+        }
+        return r.json();
+    })
     .then(data => {
+        console.log('✅ Réponse:', data);
         if (data.success) {
             showSuccess('✅ Image supprimée');
             loadGalleryManagement();
         } else {
-            showError(data.message || 'Erreur lors de la suppression');
+            showError('❌ Erreur: ' + (data.message || 'Erreur lors de la suppression'));
+        }
+    })
+    .catch(err => {
+        console.error('❌ Erreur suppression:', err);
+        showError('❌ Erreur de connexion: ' + err.message);
+    });
+}
+
+// ===============================
+// UTILISATEURS
+// ===============================
+
+// ===============================
+// ADMIN.JS - PARTIE MANQUANTE
+// À placer AVANT la section "UTILISATEURS" (avant ligne ~850)
+// ===============================
+
+// ===============================
+// MESSAGES DE CONTACT
+// ===============================
+function loadMessages() {
+    console.log('📧 Chargement des messages...');
+    
+    const token = getAuthToken();
+    if (!token) {
+        showMessagesError('Non authentifié');
+        return;
+    }
+    
+    const tbody = document.querySelector('#messagesTable tbody');
+    if (!tbody) {
+        console.error('❌ Table messagesTable non trouvée');
+        return;
+    }
+    
+    tbody.innerHTML = '<tr><td colspan="7" class="loading">⏳ Chargement...</td></tr>';
+    
+    fetch(`php/api/admin.php?action=getAllMessages&token=${encodeURIComponent(token)}`)
+        .then(r => {
+            console.log('📡 Réponse messages status:', r.status);
+            if (!r.ok) throw new Error('Erreur HTTP: ' + r.status);
+            return r.json();
+        })
+        .then(data => {
+            console.log('✅ Messages reçus:', data);
+            if (data.success && Array.isArray(data.messages)) {
+                allMessages = data.messages;
+                displayMessages(allMessages);
+            } else {
+                showMessagesError(data.message || 'Erreur de chargement');
+            }
+        })
+        .catch(err => {
+            console.error('❌ Erreur:', err);
+            showMessagesError('Erreur de connexion: ' + err.message);
+        });
+}
+
+function displayMessages(messages) {
+    const tbody = document.querySelector('#messagesTable tbody');
+    if (!tbody) return;
+    
+    if (!messages || messages.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="no-data">📧 Aucun message</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = messages.map(msg => `
+        <tr>
+            <td>${msg.first_name || ''} ${msg.last_name || ''}</td>
+            <td>${msg.email || ''}</td>
+            <td>${msg.subject || ''}</td>
+            <td>${msg.message ? msg.message.substring(0, 50) + '...' : ''}</td>
+            <td><span class="badge ${msg.status === 'read' ? 'badge-success' : 'badge-warning'}">${msg.status === 'read' ? '✅ Lu' : '⏳ Non lu'}</span></td>
+            <td>${formatDate(msg.created_at)}</td>
+            <td>
+                <div class="action-btns">
+                    <button class="btn-view" onclick="viewMessage(${msg.id})">👁️ Voir</button>
+                    <button class="btn-delete" onclick="deleteMessage(${msg.id})">🗑️ Supprimer</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+    
+    console.log(`✅ ${messages.length} messages affichés`);
+}
+
+function showMessagesError(message) {
+    const tbody = document.querySelector('#messagesTable tbody');
+    if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="7" class="no-data" style="color: #e74c3c;">❌ ${message}</td></tr>`;
+    }
+}
+
+function viewMessage(id) {
+    const message = allMessages.find(m => m.id === id);
+    
+    if (!message) {
+        showError('Message non trouvé');
+        return;
+    }
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.style.display = 'flex';
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2>📧 Message de ${message.first_name} ${message.last_name}</h2>
+                <button class="close-btn" onclick="this.closest('.modal').remove()">✕</button>
+            </div>
+            
+            <div style="padding: 25px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+                    <div>
+                        <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">NOM</p>
+                        <p style="margin: 0; font-size: 16px; color: #2c3e50;">${message.first_name} ${message.last_name}</p>
+                    </div>
+                    
+                    <div>
+                        <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">EMAIL</p>
+                        <p style="margin: 0; font-size: 16px; color: #2c3e50;">
+                            <a href="mailto:${message.email}" style="color: #3498db; text-decoration: none;">
+                                ${message.email}
+                            </a>
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">TÉLÉPHONE</p>
+                        <p style="margin: 0; font-size: 16px; color: #2c3e50;">
+                            ${message.phone ? `<a href="tel:${message.phone}" style="color: #3498db; text-decoration: none;">${message.phone}</a>` : 'Non renseigné'}
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">DATE</p>
+                        <p style="margin: 0; font-size: 16px; color: #2c3e50;">${formatDate(message.created_at)}</p>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 25px; padding-bottom: 25px; border-bottom: 1px solid #ecf0f1;">
+                    <p style="margin: 0 0 5px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">SUJET</p>
+                    <p style="margin: 0; font-size: 18px; color: #2c3e50; font-weight: 600;">${message.subject}</p>
+                </div>
+                
+                <div>
+                    <p style="margin: 0 0 10px 0; color: #7f8c8d; font-size: 13px; font-weight: 600;">MESSAGE</p>
+                    <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; line-height: 1.8; color: #2c3e50; white-space: pre-wrap;">
+                        ${message.message}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="this.closest('.modal').remove()">Fermer</button>
+                <button class="btn-primary" onclick="markMessageAsRead(${message.id}); this.closest('.modal').remove();">
+                    ✅ Marquer comme lu
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+
+function markMessageAsRead(messageId) {
+    const token = getAuthToken();
+    
+    if (!token) {
+        showError('Non authentifié');
+        return;
+    }
+    
+    fetch('php/api/admin.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            action: 'markMessageAsRead',
+            token: token,
+            message_id: messageId
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showSuccess('✅ Message marqué comme lu');
+            loadMessages();
+        } else {
+            showError(data.message || 'Erreur');
         }
     })
     .catch(err => {
@@ -1449,9 +1692,40 @@ function deleteGalleryImage(id) {
     });
 }
 
-// ===============================
-// UTILISATEURS
-// ===============================
+function deleteMessage(id) {
+    if (!confirm('🗑️ Voulez-vous vraiment supprimer ce message ?')) return;
+    
+    const token = getAuthToken();
+    if (!token) {
+        showError('Non authentifié');
+        return;
+    }
+    
+    fetch('php/api/admin.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            action: 'deleteMessage',
+            token: token,
+            message_id: id
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showSuccess('✅ Message supprimé');
+            loadMessages();
+        } else {
+            showError(data.message || 'Erreur');
+        }
+    })
+    .catch(err => {
+        console.error('❌ Erreur:', err);
+        showError('Erreur de connexion');
+    });
+}
+
+
 function loadUsers() {
     console.log('👥 Chargement des utilisateurs...');
     
