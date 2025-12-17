@@ -237,7 +237,11 @@ $adminEmail = $_SESSION['user_email'] ?? $user['email'] ?? '';
                     </table>
                 </div>
             </section>
-            section id="gallery-section" class="content-section">
+            
+
+
+<!-- GALLERY SECTION - Add this to admin.php after the users-section -->
+<section id="gallery-section" class="content-section">
     <div class="section-header">
         <h2>Gestion de la Galerie</h2>
         <button class="btn-primary" onclick="openGalleryModal()">+ Ajouter à la galerie</button>
@@ -319,9 +323,9 @@ $adminEmail = $_SESSION['user_email'] ?? $user['email'] ?? '';
                     Enregistrer
                 </button>
             </div>
-                </form>
-            </div>
-            </div>
+        </form>
+    </div>
+</div>
 
             <!-- CUSTOM ORDERS SECTION -->
             <section id="custom-orders-section" class="content-section">
