@@ -365,17 +365,11 @@ nav a.active {
     border-radius: 12px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
+
     border: 2px dashed #e0e0e0;
 
 }
 
-.map-placeholder p {
-    font-size: 24px;
-    color: #999;
-    margin-bottom: 10px;
-}
 
 .map-note {
     font-size: 14px !important;
