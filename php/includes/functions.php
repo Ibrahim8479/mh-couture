@@ -4,7 +4,7 @@
  * Fichier: php/includes/functions.php
  * CORRIGÉ avec support admin
  */
-
+   
 // Definir les headers JSON pour les API
 function setJSONHeaders() {
     header('Content-Type: application/json; charset=utf-8');

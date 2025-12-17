@@ -50,68 +50,49 @@ try {
     switch ($action) {
         // ===== DASHBOARD =====
         case 'getDashboardStats':
-            // ✅ CORRECTION 3: Statistiques complètes et optimisées
+            // ✅ CORRECTION: Statistiques simplifiées et sûres
             $stats = [];
             
             // Produits
-            $stmt = $conn->query("SELECT COUNT(*) as total, SUM(stock) as total_stock FROM products");
-            $products = $stmt->fetch(PDO::FETCH_ASSOC);
-            $stats['products'] = [
-                'total' => $products['total'] ?? 0,
-                'total_stock' => $products['total_stock'] ?? 0
-            ];
+            try {
+                $stmt = $conn->query("SELECT COUNT(*) as total FROM products");
+                $products = $stmt->fetch(PDO::FETCH_ASSOC);
+                $stats['products'] = $products['total'] ?? 0;
+            } catch (Exception $e) {
+                $stats['products'] = 0;
+            }
             
-            // Commandes normales
-            $stmt = $conn->query("
-                SELECT 
-                    COUNT(*) as total,
-                    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
-                FROM orders
-            ");
-            $orders = $stmt->fetch(PDO::FETCH_ASSOC);
-            $stats['orders'] = $orders;
-            
-            // Commandes sur mesure
-            $stmt = $conn->query("
-                SELECT 
-                    COUNT(*) as total,
-                    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-                    SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress
-                FROM custom_orders
-            ");
-            $custom_orders = $stmt->fetch(PDO::FETCH_ASSOC);
-            $stats['custom_orders'] = $custom_orders;
+            // Commandes
+            try {
+                $stmt = $conn->query("SELECT COUNT(*) as total FROM orders");
+                $orders = $stmt->fetch(PDO::FETCH_ASSOC);
+                $stats['orders'] = $orders['total'] ?? 0;
+            } catch (Exception $e) {
+                $stats['orders'] = 0;
+            }
             
             // Utilisateurs
-            $stmt = $conn->query("
-                SELECT 
-                    COUNT(*) as total,
-                    SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active
-                FROM users
-            ");
-            $users = $stmt->fetch(PDO::FETCH_ASSOC);
-            $stats['users'] = $users;
+            try {
+                $stmt = $conn->query("SELECT COUNT(*) as total FROM users");
+                $users = $stmt->fetch(PDO::FETCH_ASSOC);
+                $stats['users'] = $users['total'] ?? 0;
+            } catch (Exception $e) {
+                $stats['users'] = 0;
+            }
             
             // Revenus
-            $stmt = $conn->query("
-                SELECT 
-                    SUM(total_amount) as total,
-                    SUM(CASE WHEN status = 'completed' THEN total_amount ELSE 0 END) as completed,
-                    SUM(CASE WHEN MONTH(created_at) = MONTH(NOW()) THEN total_amount ELSE 0 END) as this_month
-                FROM orders
-            ");
-            $revenue = $stmt->fetch(PDO::FETCH_ASSOC);
-            $stats['revenue'] = [
-                'total' => number_format($revenue['total'] ?? 0, 0, ',', ' ') . ' FCFA',
-                'completed' => number_format($revenue['completed'] ?? 0, 0, ',', ' ') . ' FCFA',
-                'this_month' => number_format($revenue['this_month'] ?? 0, 0, ',', ' ') . ' FCFA'
-            ];
-            
-            // Messages non lus
-            $stmt = $conn->query("SELECT COUNT(*) as count FROM contact_messages WHERE status = 'unread'");
-            $messages = $stmt->fetch(PDO::FETCH_ASSOC);
-            $stats['unread_messages'] = $messages['count'] ?? 0;
+            try {
+                $stmt = $conn->query("
+                    SELECT SUM(total_amount) as total 
+                    FROM orders 
+                    WHERE status = 'completed'
+                ");
+                $revenue = $stmt->fetch(PDO::FETCH_ASSOC);
+                $totalRevenue = $revenue['total'] ?? 0;
+                $stats['revenue'] = number_format($totalRevenue, 0, ',', ' ') . ' FCFA';
+            } catch (Exception $e) {
+                $stats['revenue'] = '0 FCFA';
+            }
             
             echo json_encode([
                 'success' => true,
