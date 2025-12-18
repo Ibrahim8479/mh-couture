@@ -2,16 +2,18 @@
 /**
  * Page d'accueil - MH Couture
  * Fichier: index.php
- * VERSION CORRIGÉE - N'affecte plus les utilisateurs connectés
  */
 
 session_start();
 
-// *** IMPORTANT: NE PAS rediriger automatiquement ***
-// Chaque utilisateur (connecté ou non) peut accéder à la page d'accueil
-
-// Vérifier simplement si connecté (pour afficher le bon menu)
-$isLoggedIn = isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token']);
+// Redirection si utilisateur connecté
+if (isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token'])) {
+    header('Location: collections.php');
+    exit;
+}
+else {
+    $isLoggedIn = false;
+}   
 ?>
 <!DOCTYPE html>
 <html lang="fr">
