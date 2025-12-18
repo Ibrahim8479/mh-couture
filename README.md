@@ -420,8 +420,9 @@ This project is an academic project for Web Technology course (Summer 2025). All
 **Project Version**: 1.0.0  
 **Last Updated**: December 17, 2025  
 **Status**: ✅ Production Ready  
-
+** AI use Deepseek,Claude for help
 ---
+
 
 <div align="center">
 
