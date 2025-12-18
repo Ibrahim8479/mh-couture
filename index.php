@@ -12,7 +12,9 @@ if (isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token'])) {
     exit;
 }
 else {
-    $isLoggedIn = false;
+
+    header('Location: collections.php');
+    exit;   
 }   
 ?>
 <!DOCTYPE html>
