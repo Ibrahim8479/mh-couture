@@ -1,17 +1,27 @@
+
 <?php
 /**
  * Page d'accueil - MH Couture
- * Fichier: index.php
+ * Option 1: Redirection vers login si pas authentifié
  */
 
 session_start();
 
-// Redirection si utilisateur connecté
-if (isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token'])) {
-    header('Location: collections.php');
+// Vérifier l'authentification
+$token = $_SESSION['auth_token'] ?? $_COOKIE['auth_token'] ?? null;
+
+// Option A: FORCER LA PAGE DE LOGIN (comportement strict)
+if (!$token) {
+    // Rediriger vers login si pas de token
+    header('Location: login.php');
     exit;
 }
 
+// Option B: PERMETTRE L'ACCÈS SANS LOGIN (comportement actuel)
+// Laisser l'utilisateur voir la page d'accueil même sans être connecté
+// C'est le comportement standard pour un site e-commerce
+
+// Le reste de ton code index.php...
 ?>
 <!DOCTYPE html>
 <html lang="fr">
