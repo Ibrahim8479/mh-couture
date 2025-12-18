@@ -296,7 +296,7 @@ A complete demonstration video (max 10 minutes) is available showing:
 8. Product and gallery management
 9. Order tracking // not yet finish
 
-**[Video Link to be added]**
+**[see Video demo ](https://youtu.be/QUrqnJHTFMw)**
 
 ---
 
@@ -425,7 +425,7 @@ This project is an academic project for Web Technology course (Summer 2025). All
 
 <div align="center">
 
-### Made with ❤️ by Ibrahim Abdou
+### Made with  by Ibrahim Abdou
 ### Niamey, Niger 🇳🇪
 
 **[Visit Live Site](http://169.239.251.102:341/~ibrahim.abdou/uploads/mh-couture/)**
