@@ -1613,6 +1613,241 @@ function viewMessage(id) {
     });
 }
 
+// Dans admin.js, ajoute cette fonction après displayOrders()
+
+function viewOrder(id) {
+    const token = getAuthToken();
+    if (!token) {
+        showError('Non authentifié');
+        return;
+    }
+    
+    fetch(`php/api/admin.php?action=getOrderDetails&order_id=${id}&token=${encodeURIComponent(token)}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.order) {
+                showOrderDetailsModal(data.order);
+            } else {
+                showError(data.message || 'Erreur lors du chargement');
+            }
+        })
+        .catch(err => {
+            console.error('❌ Erreur:', err);
+            showError('Erreur de connexion');
+        });
+}
+
+function showOrderDetailsModal(order) {
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.style.display = 'flex';
+    
+    // Calculer le total des articles
+    const itemsHtml = order.items && order.items.length > 0 
+        ? order.items.map(item => `
+            <tr>
+                <td>
+                    <img src="${item.image_url || 'https://via.placeholder.com/50'}" 
+                         style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;"
+                         onerror="this.src='https://via.placeholder.com/50'">
+                </td>
+                <td>${item.product_name || 'Produit inconnu'}</td>
+                <td>${item.quantity}</td>
+                <td>${Number(item.price || 0).toLocaleString('fr-FR')} FCFA</td>
+                <td><strong>${(item.quantity * Number(item.price || 0)).toLocaleString('fr-FR')} FCFA</strong></td>
+            </tr>
+        `).join('')
+        : '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #999;">Aucun article</td></tr>';
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 900px; max-height: 85vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2>📋 Détails de la commande ${order.order_number}</h2>
+                <button class="close-btn" onclick="this.closest('.modal').remove()">✕</button>
+            </div>
+            
+            <div style="padding: 25px;">
+                <!-- Informations Client -->
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                    <h3 style="margin: 0 0 15px 0; color: #333;">👤 Informations Client</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <p style="margin: 5px 0; color: #666; font-size: 13px;">NOM</p>
+                            <p style="margin: 0; font-size: 16px; font-weight: 600;">${order.customer_name || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <p style="margin: 5px 0; color: #666; font-size: 13px;">EMAIL</p>
+                            <p style="margin: 0; font-size: 16px;">
+                                <a href="mailto:${order.customer_email}" style="color: #3498db; text-decoration: none;">
+                                    ${order.customer_email || 'N/A'}
+                                </a>
+                            </p>
+                        </div>
+                        <div>
+                            <p style="margin: 5px 0; color: #666; font-size: 13px;">TÉLÉPHONE</p>
+                            <p style="margin: 0; font-size: 16px;">
+                                ${order.customer_phone ? `<a href="tel:${order.customer_phone}" style="color: #3498db; text-decoration: none;">${order.customer_phone}</a>` : 'Non renseigné'}
+                            </p>
+                        </div>
+                        <div>
+                            <p style="margin: 5px 0; color: #666; font-size: 13px;">DATE DE COMMANDE</p>
+                            <p style="margin: 0; font-size: 16px;">${formatDate(order.created_at)}</p>
+                        </div>
+                    </div>
+                    
+                    ${order.shipping_address ? `
+                        <div style="margin-top: 15px;">
+                            <p style="margin: 5px 0; color: #666; font-size: 13px;">ADRESSE DE LIVRAISON</p>
+                            <p style="margin: 0; font-size: 16px;">${order.shipping_address}</p>
+                        </div>
+                    ` : ''}
+                    
+                    ${order.notes ? `
+                        <div style="margin-top: 15px;">
+                            <p style="margin: 5px 0; color: #666; font-size: 13px;">NOTES</p>
+                            <p style="margin: 0; padding: 10px; background: white; border-radius: 4px; font-size: 14px;">${order.notes}</p>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <!-- Articles Commandés -->
+                <div style="margin-bottom: 20px;">
+                    <h3 style="margin: 0 0 15px 0; color: #333;">🛍️ Articles Commandés</h3>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden;">
+                            <thead style="background: #f8f9fa;">
+                                <tr>
+                                    <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Image</th>
+                                    <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Produit</th>
+                                    <th style="padding: 12px; text-align: center; border-bottom: 2px solid #dee2e6;">Quantité</th>
+                                    <th style="padding: 12px; text-align: right; border-bottom: 2px solid #dee2e6;">Prix Unit.</th>
+                                    <th style="padding: 12px; text-align: right; border-bottom: 2px solid #dee2e6;">Sous-total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${itemsHtml}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Résumé Financier -->
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span style="color: #666;">Statut:</span>
+                        <span class="status-badge status-${order.status}">${getStatusLabel(order.status)}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span style="color: #666;">Méthode de paiement:</span>
+                        <strong>${order.payment_method === 'cash' ? '💵 Espèces' : order.payment_method}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-top: 15px; border-top: 2px solid #dee2e6; margin-top: 15px;">
+                        <span style="font-size: 18px; font-weight: 600;">TOTAL:</span>
+                        <strong style="font-size: 20px; color: #27ae60;">${Number(order.total_amount || 0).toLocaleString('fr-FR')} FCFA</strong>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="this.closest('.modal').remove()">Fermer</button>
+                <button class="btn-primary" onclick="updateOrderStatusModal(${order.id}, '${order.status}'); this.closest('.modal').remove();">
+                    📝 Modifier le statut
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+
+function updateOrderStatusModal(orderId, currentStatus) {
+    const token = getAuthToken();
+    if (!token) {
+        showError('Non authentifié');
+        return;
+    }
+    
+    const statuses = [
+        { value: 'pending', label: 'En attente' },
+        { value: 'processing', label: 'En cours' },
+        { value: 'completed', label: 'Terminée' },
+        { value: 'cancelled', label: 'Annulée' }
+    ];
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.style.display = 'flex';
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Modifier le statut</h2>
+                <button class="close-btn" onclick="this.closest('.modal').remove()">✕</button>
+            </div>
+            <div style="padding: 25px;">
+                <p style="margin-bottom: 15px; color: #666;">Sélectionnez le nouveau statut de la commande :</p>
+                <select id="newOrderStatus" class="form-control" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+                    ${statuses.map(s => `
+                        <option value="${s.value}" ${s.value === currentStatus ? 'selected' : ''}>
+                            ${s.label}
+                        </option>
+                    `).join('')}
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="this.closest('.modal').remove()">Annuler</button>
+                <button class="btn-primary" onclick="saveOrderStatus(${orderId}, this.closest('.modal'))">
+                    Enregistrer
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function saveOrderStatus(orderId, modal) {
+    const newStatus = document.getElementById('newOrderStatus').value;
+    const token = getAuthToken();
+    
+    if (!token) {
+        showError('Non authentifié');
+        return;
+    }
+    
+    fetch('php/api/admin.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            action: 'updateOrderStatus',
+            token: token,
+            order_id: orderId,
+            status: newStatus
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showSuccess('✅ Statut mis à jour avec succès');
+            modal.remove();
+            loadOrders();
+        } else {
+            showError(data.message || 'Erreur lors de la mise à jour');
+        }
+    })
+    .catch(err => {
+        console.error('❌ Erreur:', err);
+        showError('Erreur de connexion');
+    });
+}
+
+
 // ========== ANIMATIONS CSS ==========
 const style = document.createElement('style');
 style.textContent = `
