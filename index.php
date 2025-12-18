@@ -41,25 +41,17 @@ $isLoggedIn = isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token']);
         <nav>
             <ul>
                 <li><a href="index.php" class="active">ACCUEIL</a></li>
-                <?php if ($isLoggedIn): ?>
-                    <li><a href="collections.php">COLLECTIONS</a></li>
-                    <li><a href="custom-designs.php">CRÉATIONS SUR MESURE</a></li>
-                    <li><a href="pricing.php">TARIFS</a></li>
-                    <li><a href="gallery.php">GALERIE</a></li>
-                    <li><a href="contact.php">CONTACT</a></li>
-                <?php else: ?>
-                    <li><a href="login.php">COLLECTIONS</a></li>
-                    <li><a href="login.php">CRÉATIONS SUR MESURE</a></li>
-                    <li><a href="login.php">TARIFS</a></li>
-                    <li><a href="login.php">GALERIE</a></li>
-                    <li><a href="login.php">CONTACT</a></li>
-                <?php endif; ?>
+                <li><a href="login.php">COLLECTIONS</a></li>
+                <li><a href="login.php">CRÉATIONS SUR MESURE</a></li>
+                <li><a href="login.php">TARIFS</a></li>
+                <li><a href="login.php">GALERIE</a></li>
+                <li><a href="login.php">CONTACT</a></li>
             </ul>
         </nav>
     </header>
 
     <main>
-        <section class="hero">i
+        <section class="hero">
             <div class="hero-content">
                 <h2>Bienvenue chez</h2>
                 <h2><span class="highlight">MH Couture</span></h2>
@@ -70,7 +62,6 @@ $isLoggedIn = isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token']);
                     Vivez l'expérience d'une couture de luxe confectionnée juste pour vous.
                 </p>
                 
-                <?php if (!$isLoggedIn): ?>
                 <div class="auth-buttons">
                     <a href="login.php" class="btn-login">Se Connecter</a>
                     <a href="signup.php" class="btn-signup">S'inscrire</a>
@@ -79,12 +70,6 @@ $isLoggedIn = isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token']);
                 <p class="account-link">
                     Vous avez déjà un compte? <a href="login.php">Cliquez ici pour vous connecter</a>
                 </p>
-                <?php else: ?>
-                <div class="auth-buttons">
-                    <a href="collections.php" class="btn-login">Voir nos Collections</a>
-                    <a href="custom-designs.php" class="btn-signup">Commander sur Mesure</a>
-                </div>
-                <?php endif; ?>
                 
                 <div class="social-links">
                     <a href="https://www.facebook.com/share/1B6LWJF6N2/" aria-label="Facebook">
