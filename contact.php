@@ -180,7 +180,7 @@ if (!$token) {
                 </div>
             </div>
         </section>
-
+        <!-- MAP SECTION 
         <section class="map-section">
             <div class="container">
                 <h2>Notre Emplacement</h2>
@@ -189,8 +189,9 @@ if (!$token) {
                 </div>
             </div>
         </section>
-    </main>
+        -->
 
+    </main>
     <footer>
         <div class="container">
             <div class="footer-content">
