@@ -1,20 +1,14 @@
 <?php
+/**
+ * Page d'accueil - MH Couture
+ * Fichier: index.php
+ */
+
 session_start();
 
-// 1. Si la session existe, OK
-if (isset($_SESSION['auth_token'])) {
-    $token = $_SESSION['auth_token'];
-}
-// 2. Sinon, on regarde le cookie
-elseif (isset($_COOKIE['auth_token'])) {
-    $token = $_COOKIE['auth_token'];
-
-    // IMPORTANT : recréer la session à partir du cookie
-    $_SESSION['auth_token'] = $token;
-}
-// 3. Sinon, pas connecté
-else {
-    header('Location: login.php');
+// Redirection si utilisateur connecté
+if (isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token'])) {
+    header('Location: collections.php');
     exit;
 }
 
@@ -101,6 +95,5 @@ else {
             </div>
         </section>
     </main>
-    
 </body>
 </html>
