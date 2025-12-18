@@ -291,6 +291,7 @@ try {
                 'orders' => $orders
             ], JSON_UNESCAPED_UNICODE);
             break;
+            
 
         case 'getOrderDetails':
             $order_id = intval($_GET['order_id'] ?? 0);

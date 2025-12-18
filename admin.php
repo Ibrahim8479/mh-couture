@@ -324,9 +324,8 @@ $adminEmail = $_SESSION['user_email'] ?? $user['email'] ?? '';
                 </button>
             </div>
         </form>
-    </div>
-</div>
-
+            </div>
+            </div>
             <!-- CUSTOM ORDERS SECTION -->
             <section id="custom-orders-section" class="content-section">
                 <div class="section-header">

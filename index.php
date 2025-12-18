@@ -2,15 +2,16 @@
 /**
  * Page d'accueil - MH Couture
  * Fichier: index.php
+ * VERSION CORRIGÉE - N'affecte plus les utilisateurs connectés
  */
 
 session_start();
 
-// Redirection si utilisateur connecté
-if (isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token'])) {
-    header('Location: collections.php');
-    exit;
-}
+// *** IMPORTANT: NE PAS rediriger automatiquement ***
+// Chaque utilisateur (connecté ou non) peut accéder à la page d'accueil
+
+// Vérifier simplement si connecté (pour afficher le bon menu)
+$isLoggedIn = isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token']);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -40,13 +41,28 @@ if (isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token'])) {
         <nav>
             <ul>
                 <li><a href="index.php" class="active">ACCUEIL</a></li>
-                <li><a href="login.php">COLLECTIONS</a></li>
-                <li><a href="login.php">CRÉATIONS SUR MESURE</a></li>
-                <li><a href="login.php">TARIFS</a></li>
-                <li><a href="login.php">GALERIE</a></li>
-                <li><a href="login.php">CONTACT</a></li>
+                <?php if ($isLoggedIn): ?>
+                    <li><a href="collections.php">COLLECTIONS</a></li>
+                    <li><a href="custom-designs.php">CRÉATIONS SUR MESURE</a></li>
+                    <li><a href="pricing.php">TARIFS</a></li>
+                    <li><a href="gallery.php">GALERIE</a></li>
+                    <li><a href="contact.php">CONTACT</a></li>
+                <?php else: ?>
+                    <li><a href="login.php">COLLECTIONS</a></li>
+                    <li><a href="login.php">CRÉATIONS SUR MESURE</a></li>
+                    <li><a href="login.php">TARIFS</a></li>
+                    <li><a href="login.php">GALERIE</a></li>
+                    <li><a href="login.php">CONTACT</a></li>
+                <?php endif; ?>
             </ul>
         </nav>
+        <?php if ($isLoggedIn): ?>
+        <div class="header-actions">
+            <a href="profile.php" class="user-icon" title="Mon compte">👤</a>
+            <a href="cart.php" class="cart-icon" title="Mon panier">🛒 <span class="cart-count">0</span></a>
+            <a href="logout.php" class="btn-logout" style="padding: 8px 15px; background: #d97642; color: white; border-radius: 4px; text-decoration: none; font-size: 14px;">Déconnexion</a>
+        </div>
+        <?php endif; ?>
     </header>
 
     <main>
@@ -61,6 +77,7 @@ if (isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token'])) {
                     Vivez l'expérience d'une couture de luxe confectionnée juste pour vous.
                 </p>
                 
+                <?php if (!$isLoggedIn): ?>
                 <div class="auth-buttons">
                     <a href="login.php" class="btn-login">Se Connecter</a>
                     <a href="signup.php" class="btn-signup">S'inscrire</a>
@@ -69,6 +86,12 @@ if (isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token'])) {
                 <p class="account-link">
                     Vous avez déjà un compte? <a href="login.php">Cliquez ici pour vous connecter</a>
                 </p>
+                <?php else: ?>
+                <div class="auth-buttons">
+                    <a href="collections.php" class="btn-login">Voir nos Collections</a>
+                    <a href="custom-designs.php" class="btn-signup">Commander sur Mesure</a>
+                </div>
+                <?php endif; ?>
                 
                 <div class="social-links">
                     <a href="https://www.facebook.com/share/1B6LWJF6N2/" aria-label="Facebook">
