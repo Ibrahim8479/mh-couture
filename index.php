@@ -56,17 +56,10 @@ $isLoggedIn = isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token']);
                 <?php endif; ?>
             </ul>
         </nav>
-        <?php if ($isLoggedIn): ?>
-        <div class="header-actions">
-            <a href="profile.php" class="user-icon" title="Mon compte">👤</a>
-            <a href="cart.php" class="cart-icon" title="Mon panier">🛒 <span class="cart-count">0</span></a>
-            <a href="logout.php" class="btn-logout" style="padding: 8px 15px; background: #d97642; color: white; border-radius: 4px; text-decoration: none; font-size: 14px;">Déconnexion</a>
-        </div>
-        <?php endif; ?>
     </header>
 
     <main>
-        <section class="hero">
+        <section class="hero">i
             <div class="hero-content">
                 <h2>Bienvenue chez</h2>
                 <h2><span class="highlight">MH Couture</span></h2>
