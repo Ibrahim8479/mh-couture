@@ -6,12 +6,9 @@
 
 session_start();
 
-// Vérifier l'authentification
-$token = $_SESSION['auth_token'] ?? $_COOKIE['auth_token'] ?? null;
-
-// ✅ IMPORTANT: Si pas de token, rediriger vers LOGIN (pas index)
-if (!$token) {
-    header('Location: login.php');
+// Redirection si utilisateur connecté
+if (isset($_SESSION['auth_token']) || isset($_COOKIE['auth_token'])) {
+    header('Location: collections.php');
     exit;
 }
 
