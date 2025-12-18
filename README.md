@@ -222,7 +222,7 @@ http:/http://169.239.251.102:341/~ibrahim.abdou/uploads/mh-couture
 
 ### Admin Account
 - **Email**: `Ibrahim@gmail.com`
-- **Password**: `Ibrahim125`
+- **Password**: `Ibrahim123`
 - **Access**: Full admin panel with all management features
 
 ### Customer Account
