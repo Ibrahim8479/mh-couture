@@ -907,6 +907,9 @@ tbody tr:hover {
     align-items: center;
     gap: 4px;
 }
+#galleryForm{
+    padding: 30px;
+}
 
 .btn-edit {
     background: #3498db;
